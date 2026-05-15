@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Board Mute</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="popup-shell" aria-live="polite">
+      <header class="popup-header">
+        <div>
+          <h1>Board Mute</h1>
+          <p id="statusText">규칙 읽는 중</p>
+        </div>
+        <div class="status-dot" aria-hidden="true"></div>
+      </header>
+
+      <section class="site-picker-panel" aria-label="관리할 사이트">
+        <label class="site-picker">
+          <span>사이트</span>
+          <select id="siteSelect" aria-label="관리할 사이트 선택">
+            <option value="dcinside">디시인사이드</option>
+            <option value="fmkorea">에펨코리아</option>
+            <option value="ruliweb">루리웹</option>
+            <option value="mlbpark">엠팍</option>
+            <option value="clien">클리앙</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="summary-grid" aria-label="규칙 요약">
+        <div class="summary-item">
+          <span id="siteTitleSummaryLabel" class="summary-label">디시 제목</span>
+          <strong id="titleKeywordCount">0</strong>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">전역 제목</span>
+          <strong id="globalTitleKeywordCount">0</strong>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">작성자값</span>
+          <strong id="writerValueCount">0</strong>
+        </div>
+      </section>
+
+      <section class="site-toggle-panel" aria-labelledby="siteToggleHeading">
+        <div>
+          <h2 id="siteToggleHeading">디시 차단</h2>
+          <p id="siteEnabledText">상태 확인 중</p>
+        </div>
+        <label class="site-toggle">
+          <input id="siteEnabledToggle" type="checkbox" role="switch" aria-label="디시 차단 켜기">
+          <span aria-hidden="true"></span>
+        </label>
+      </section>
+
+      <section class="rule-group" aria-labelledby="siteRulesHeading">
+        <div class="rule-group-heading">
+          <h2 id="siteRulesHeading">디시 규칙</h2>
+          <span id="siteRulesHost">gall.dcinside.com</span>
+        </div>
+
+        <section class="rule-section" aria-labelledby="titleKeywordsHeading">
+          <h3 id="titleKeywordsHeading">제목 키워드</h3>
+          <form id="titleKeywordForm" class="add-form">
+            <input
+              id="titleKeywordInput"
+              name="titleKeyword"
+              type="text"
+              autocomplete="off"
+              aria-label="제목 키워드"
+              maxlength="80"
+            >
+            <button id="titleKeywordAddButton" type="submit">추가</button>
+          </form>
+          <p id="titleKeywordFeedback" class="form-feedback" role="status"></p>
+          <ul id="titleKeywordList" class="chip-list"></ul>
+        </section>
+
+        <section class="rule-section" aria-labelledby="writerValuesHeading">
+          <h3 id="writerValuesHeading">작성자/아이디/IP</h3>
+          <form id="writerValueForm" class="add-form writer-add-form">
+            <input
+              id="writerValueInput"
+              name="writerValue"
+              type="text"
+              autocomplete="off"
+              aria-label="작성자, 아이디, IP 값"
+              maxlength="80"
+            >
+            <select id="writerValueTypeSelect" name="writerValueType" aria-label="작성자 차단값 분류">
+              <option value="unknown">미분류</option>
+              <option value="uid">아이디</option>
+              <option value="ip">IP</option>
+              <option value="nick">닉네임</option>
+            </select>
+            <button id="writerValueAddButton" type="submit">추가</button>
+          </form>
+          <p id="writerValueFeedback" class="form-feedback" role="status"></p>
+          <div class="writer-filter-tabs" aria-label="작성자 차단값 필터">
+            <button type="button" class="writer-filter-button is-active" data-writer-filter="all" aria-pressed="true">전체</button>
+            <button type="button" class="writer-filter-button" data-writer-filter="uid" aria-pressed="false">아이디</button>
+            <button type="button" class="writer-filter-button" data-writer-filter="ip" aria-pressed="false">IP</button>
+            <button type="button" class="writer-filter-button" data-writer-filter="nick" aria-pressed="false">닉네임</button>
+            <button type="button" class="writer-filter-button" data-writer-filter="unknown" aria-pressed="false">미분류</button>
+          </div>
+          <div class="writer-filter-controls">
+            <label class="writer-source-filter">
+              <span>출처</span>
+              <select id="writerSourceFilterSelect" aria-label="작성자 차단값 출처 필터">
+                <option value="all">전체 출처</option>
+                <option value="page">페이지에서 추가</option>
+                <option value="popup">직접 추가</option>
+                <option value="legacy">이전됨</option>
+                <option value="default">기본값</option>
+                <option value="unknown">출처 미확인</option>
+              </select>
+            </label>
+            <label class="writer-search-filter">
+              <span>검색</span>
+              <input
+                id="writerSearchInput"
+                type="search"
+                autocomplete="off"
+                aria-label="작성자 차단값 검색"
+                maxlength="80"
+              >
+            </label>
+          </div>
+          <ul id="writerValueList" class="writer-entry-list"></ul>
+        </section>
+      </section>
+
+      <section class="rule-group common-rule-group" aria-labelledby="commonRulesHeading">
+        <div class="rule-group-heading">
+          <h2 id="commonRulesHeading">공통 규칙</h2>
+          <span>지원 사이트 전체</span>
+        </div>
+
+        <section class="rule-section common-rule-section" aria-labelledby="globalTitleKeywordsHeading">
+          <h3 id="globalTitleKeywordsHeading">전역 제목 키워드</h3>
+          <form id="globalTitleKeywordForm" class="add-form">
+            <input
+              id="globalTitleKeywordInput"
+              name="globalTitleKeyword"
+              type="text"
+              autocomplete="off"
+              aria-label="전역 제목 키워드"
+              maxlength="80"
+            >
+            <button id="globalTitleKeywordAddButton" type="submit">추가</button>
+          </form>
+          <p id="globalTitleKeywordFeedback" class="form-feedback" role="status"></p>
+          <ul id="globalTitleKeywordList" class="chip-list"></ul>
+        </section>
+      </section>
+    </main>
+
+    <script src="../shared/rulesStore.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Board Mute",
+  "version": "0.0.1",
+  "description": "Hide unwanted rows on supported Korean community board lists using local rules.",
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "32": "assets/icons/icon-32.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "Board Mute",
+    "default_icon": {
+      "16": "assets/icons/icon-16.png",
+      "32": "assets/icons/icon-32.png",
+      "48": "assets/icons/icon-48.png",
+      "128": "assets/icons/icon-128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://gall.dcinside.com/*",
+        "https://www.fmkorea.com/*",
+        "https://bbs.ruliweb.com/*",
+        "https://mlbpark.donga.com/*",
+        "https://www.clien.net/service/board/*"
+      ],
+      "js": [
+        "src/shared/rulesStore.js",
+        "src/content/contentScript.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
