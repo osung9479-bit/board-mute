@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Board Mute",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "Hide unwanted rows on supported Korean community board lists using local rules.",
   "icons": {
     "16": "assets/icons/icon-16.png",
@@ -29,7 +29,10 @@
         "https://www.fmkorea.com/*",
         "https://bbs.ruliweb.com/*",
         "https://mlbpark.donga.com/*",
-        "https://www.clien.net/service/board/*"
+        "https://www.clien.net/service/board/*",
+        "https://www.todayhumor.co.kr/",
+        "https://www.todayhumor.co.kr/board/list.php*",
+        "https://www.todayhumor.co.kr/board/view.php*"
       ],
       "js": [
         "src/shared/rulesStore.js",

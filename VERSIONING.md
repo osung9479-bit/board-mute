@@ -2,7 +2,7 @@
 
 Board Mute는 Chrome extension manifest의 숫자형 `version` 값을 기준으로 릴리스를 구분합니다.
 
-현재 첫 제출 후보 버전은 `0.0.3`입니다.
+현재 제출 후보 버전은 `0.1.0`입니다.
 
 ## 기본 원칙
 

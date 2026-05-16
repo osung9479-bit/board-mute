@@ -67,6 +67,15 @@
   const CLIEN_TITLE_CELL_SELECTOR = 'div.list_title[data-role="list-title"]';
   const CLIEN_TITLE_LINK_SELECTOR = 'a.list_subject[href]';
   const CLIEN_WRITER_CELL_SELECTOR = 'div.list_author[data-role="list-author"]';
+  const TODAYHUMOR_LIST_ROW_SELECTOR = 'tr.view[class*="list_tr_"]';
+  const TODAYHUMOR_VIEW_POST_SELECTOR = '#containerInner';
+  const TODAYHUMOR_POST_ROW_SELECTOR = `${TODAYHUMOR_LIST_ROW_SELECTOR}, ${TODAYHUMOR_VIEW_POST_SELECTOR}`;
+  const TODAYHUMOR_TITLE_CELL_SELECTOR = 'td.subject';
+  const TODAYHUMOR_TITLE_LINK_SELECTOR = 'td.subject a[href*="/board/view.php"]';
+  const TODAYHUMOR_WRITER_CELL_SELECTOR = 'td.name';
+  const TODAYHUMOR_WRITER_LINK_SELECTOR = 'a.list_name_member[href*="mn="]';
+  const TODAYHUMOR_VIEW_TITLE_SELECTOR = '.viewSubjectDiv';
+  const TODAYHUMOR_VIEW_WRITER_SELECTOR = '#viewPageWriterNameSpan[mn]';
   const WRITER_TYPE_LABELS = {
     uid: '아이디',
     ip: 'IP',
@@ -663,12 +672,166 @@
       return candidates;
     }
   };
+
+  function getTodayhumorWriterIdFromRow(row) {
+    if (row.matches(TODAYHUMOR_VIEW_POST_SELECTOR)) {
+      const writerElement = row.querySelector(TODAYHUMOR_VIEW_WRITER_SELECTOR);
+
+      return writerElement ? (writerElement.getAttribute('mn') || '').trim() : '';
+    }
+
+    return (row.getAttribute('mn') || '').trim();
+  }
+
+  function getTodayhumorWriterIdFromCell(writerCell) {
+    if (writerCell.matches(TODAYHUMOR_VIEW_WRITER_SELECTOR)) {
+      return (writerCell.getAttribute('mn') || '').trim();
+    }
+
+    const row = writerCell.closest(TODAYHUMOR_POST_ROW_SELECTOR);
+
+    return row ? getTodayhumorWriterIdFromRow(row) : '';
+  }
+
+  function getTodayhumorWriterDisplayName(writerCell) {
+    const writerLink = writerCell.querySelector(TODAYHUMOR_WRITER_LINK_SELECTOR);
+    const clonedWriterCell = (writerLink || writerCell).cloneNode(true);
+
+    clonedWriterCell
+      .querySelectorAll(`.${WRITER_ACTION_BUTTON_CLASS}`)
+      .forEach((element) => element.remove());
+
+    return (clonedWriterCell.textContent || '').trim();
+  }
+
+  const todayhumorAdapter = {
+    siteId: 'todayhumor',
+    displayName: '오늘의유머',
+    postRowSelector: TODAYHUMOR_POST_ROW_SELECTOR,
+    writerCellSelector: TODAYHUMOR_WRITER_CELL_SELECTOR,
+
+    matchesUrl(url) {
+      try {
+        const parsedUrl = new URL(url);
+
+        return (
+          parsedUrl.hostname === 'www.todayhumor.co.kr' &&
+          (parsedUrl.pathname === '/' ||
+            parsedUrl.pathname.startsWith('/board/list.php') ||
+            parsedUrl.pathname.startsWith('/board/view.php'))
+        );
+      } catch (error) {
+        return false;
+      }
+    },
+
+    isSupportedPostRow(row) {
+      if (!row.matches(this.postRowSelector)) {
+        return false;
+      }
+
+      if (row.matches(TODAYHUMOR_VIEW_POST_SELECTOR)) {
+        return Boolean(
+          row.querySelector(TODAYHUMOR_VIEW_TITLE_SELECTOR) &&
+          getTodayhumorWriterIdFromRow(row) &&
+          this.getWriterCell(row)
+        );
+      }
+
+      return Boolean(
+        row.querySelector(TODAYHUMOR_TITLE_LINK_SELECTOR) &&
+        row.querySelector(this.writerCellSelector) &&
+        row.querySelector(TODAYHUMOR_WRITER_LINK_SELECTOR) &&
+        getTodayhumorWriterIdFromRow(row)
+      );
+    },
+
+    getPostRows(root) {
+      return Array.from(root.querySelectorAll(this.postRowSelector)).filter((row) =>
+        this.isSupportedPostRow(row)
+      );
+    },
+
+    containsPostRows(node) {
+      if (!node || node.nodeType !== 1) {
+        return false;
+      }
+
+      if (node.matches(this.postRowSelector) && this.isSupportedPostRow(node)) {
+        return true;
+      }
+
+      return Array.from(node.querySelectorAll(this.postRowSelector)).some((row) =>
+        this.isSupportedPostRow(row)
+      );
+    },
+
+    getTitleText(row) {
+      if (row.matches(TODAYHUMOR_VIEW_POST_SELECTOR)) {
+        const titleElement = row.querySelector(TODAYHUMOR_VIEW_TITLE_SELECTOR);
+
+        return titleElement ? titleElement.textContent : '';
+      }
+
+      const titleLink = row.querySelector(TODAYHUMOR_TITLE_LINK_SELECTOR);
+      const titleCell = row.querySelector(TODAYHUMOR_TITLE_CELL_SELECTOR);
+
+      return titleLink ? titleLink.textContent : titleCell ? titleCell.textContent : '';
+    },
+
+    getWriterCell(row) {
+      if (row.matches(TODAYHUMOR_VIEW_POST_SELECTOR)) {
+        return row.querySelector(TODAYHUMOR_VIEW_WRITER_SELECTOR);
+      }
+
+      return row.querySelector(this.writerCellSelector);
+    },
+
+    getWriterValues(row) {
+      const writerCell = this.getWriterCell(row);
+
+      if (!writerCell) {
+        return [];
+      }
+
+      return getUniqueTrimmedValues([
+        getTodayhumorWriterIdFromRow(row),
+        getTodayhumorWriterDisplayName(writerCell)
+      ]);
+    },
+
+    getWriterCandidates(writerCell) {
+      const writerId = getTodayhumorWriterIdFromCell(writerCell);
+      const displayName = getTodayhumorWriterDisplayName(writerCell);
+      const candidates = [];
+
+      if (writerId) {
+        candidates.push({
+          type: 'uid',
+          label: '회원번호',
+          value: writerId
+        });
+      }
+
+      if (displayName) {
+        candidates.push({
+          type: 'nick',
+          label: '닉네임(주의)',
+          value: displayName
+        });
+      }
+
+      return candidates;
+    }
+  };
+
   const siteAdapters = [
     dcinsideAdapter,
     fmkoreaAdapter,
     ruliwebAdapter,
     mlbparkAdapter,
-    clienAdapter
+    clienAdapter,
+    todayhumorAdapter
   ];
   const currentSiteAdapter = getCurrentSiteAdapter();
 
@@ -793,6 +956,123 @@
 
   function getPostRows() {
     return currentSiteAdapter.getPostRows(document);
+  }
+
+  function getPageScrollX() {
+    return Number(globalThis.scrollX || globalThis.pageXOffset || 0);
+  }
+
+  function getPageScrollY() {
+    return Number(globalThis.scrollY || globalThis.pageYOffset || 0);
+  }
+
+  function getScrollingElement() {
+    return document.scrollingElement || document.documentElement || document.body;
+  }
+
+  function isBoardMuteOverlayElement(element) {
+    return Boolean(
+      element &&
+        element.closest &&
+        element.closest(
+          `.${WRITER_ACTION_MENU_CLASS}, .${WRITER_ACTION_TOAST_CLASS}, .${REVEAL_CONTROL_CLASS}, .${RECENT_WRITER_PANEL_CLASS}`
+        )
+    );
+  }
+
+  function isVisibleViewportAnchor(element) {
+    if (!element || !element.isConnected || isBoardMuteOverlayElement(element)) {
+      return false;
+    }
+
+    const rect = element.getBoundingClientRect();
+
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  function findViewportAnchorElement() {
+    if (typeof document.elementFromPoint !== 'function') {
+      return null;
+    }
+
+    const viewportWidth = globalThis.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight = globalThis.innerHeight || document.documentElement.clientHeight || 0;
+    const sampleXs = [
+      Math.round(viewportWidth / 2),
+      Math.min(80, Math.max(0, viewportWidth - 1)),
+      Math.max(0, viewportWidth - 80)
+    ];
+    const sampleYs = [
+      Math.min(96, Math.max(0, viewportHeight - 1)),
+      Math.round(viewportHeight / 3),
+      Math.round(viewportHeight / 2)
+    ];
+    const rows = getPostRows();
+
+    for (const y of sampleYs) {
+      for (const x of sampleXs) {
+        const element = document.elementFromPoint(x, y);
+
+        if (!isVisibleViewportAnchor(element)) {
+          continue;
+        }
+
+        const row = rows.find(
+          (candidate) =>
+            candidate.contains(element) &&
+            isSupportedPostRow(candidate) &&
+            isVisibleViewportAnchor(candidate)
+        );
+
+        return row || element;
+      }
+    }
+
+    return getScrollingElement();
+  }
+
+  function captureViewportSnapshot() {
+    const anchorElement = findViewportAnchorElement();
+    const anchorRect = anchorElement?.getBoundingClientRect?.();
+
+    return {
+      anchorElement,
+      anchorTop: anchorRect && Number.isFinite(anchorRect.top) ? anchorRect.top : null,
+      scrollX: getPageScrollX(),
+      scrollY: getPageScrollY()
+    };
+  }
+
+  function restoreViewportSnapshot(snapshot) {
+    if (!snapshot || typeof globalThis.scrollTo !== 'function') {
+      return;
+    }
+
+    const restore = () => {
+      let targetY = snapshot.scrollY;
+
+      if (
+        snapshot.anchorElement &&
+        snapshot.anchorElement.isConnected &&
+        snapshot.anchorTop !== null
+      ) {
+        const nextRect = snapshot.anchorElement.getBoundingClientRect();
+
+        if (Number.isFinite(nextRect.top)) {
+          targetY = getPageScrollY() + nextRect.top - snapshot.anchorTop;
+        }
+      }
+
+      globalThis.scrollTo(snapshot.scrollX, Math.max(0, targetY));
+    };
+
+    restore();
+
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(restore);
+    } else {
+      setTimeout(restore, 0);
+    }
   }
 
   function findMatchingKeyword(text, keywords) {
@@ -936,6 +1216,8 @@
       return;
     }
 
+    const viewportSnapshot = captureViewportSnapshot();
+
     optimisticResult.rows.forEach((row) => {
       if (row.getAttribute(OPTIMISTIC_WRITER_ATTRIBUTE) !== optimisticResult.writerValue) {
         return;
@@ -946,6 +1228,7 @@
     });
 
     updateRevealControl();
+    restoreViewportSnapshot(viewportSnapshot);
   }
 
   function isBoardMuteHiddenRow(row) {
@@ -1111,6 +1394,8 @@
   }
 
   function revealTemporarilyHiddenRows() {
+    const viewportSnapshot = captureViewportSnapshot();
+
     getBoardMuteHiddenRows()
       .filter((row) => row.hidden)
       .forEach((row) => {
@@ -1118,14 +1403,18 @@
       });
 
     updateRevealControl();
+    restoreViewportSnapshot(viewportSnapshot);
   }
 
   function hideTemporarilyShownRows() {
+    const viewportSnapshot = captureViewportSnapshot();
+
     getTemporarilyShownRows().forEach((row) => {
       hidePostRow(row, row.getAttribute(HIDDEN_REASON_ATTRIBUTE) || 'writer');
     });
 
     updateRevealControl();
+    restoreViewportSnapshot(viewportSnapshot);
   }
 
   function updateRevealControl() {
@@ -1478,6 +1767,7 @@
 
   function undoWriterCandidate(candidate) {
     const writerValue = candidate.value.trim();
+    const viewportSnapshot = captureViewportSnapshot();
 
     if (!rulesStore || !writerValue) {
       showToast('해제 실패');
@@ -1500,6 +1790,7 @@
           setActiveRules(rulesResult.rules);
           applyActiveRules('writer-undo-noop');
           showToast('이미 해제됨');
+          restoreViewportSnapshot(viewportSnapshot);
           return { removed: false, reason: 'not-found' };
         }
 
@@ -1513,6 +1804,7 @@
             setActiveRules(nextRules);
             applyActiveRules('writer-undo');
             showToast('차단 해제됨');
+            restoreViewportSnapshot(viewportSnapshot);
             console.info('Board Mute: writer quick add undone', {
               type: candidate.type,
               value: writerValue,
@@ -1851,6 +2143,10 @@
   function getWriterActionContainer(row, writerCell) {
     if (getCurrentSiteId() === 'clien') {
       return row;
+    }
+
+    if (getCurrentSiteId() === 'todayhumor' && row.matches(TODAYHUMOR_VIEW_POST_SELECTOR)) {
+      return writerCell.parentElement || writerCell;
     }
 
     return writerCell;

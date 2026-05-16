@@ -48,6 +48,15 @@
       titleSummaryLabel: '클리앙 제목',
       toggleHeading: '클리앙 차단',
       toggleAriaLabel: '클리앙 차단 켜기'
+    },
+    todayhumor: {
+      siteId: 'todayhumor',
+      displayName: '오늘의유머',
+      optionLabel: '오늘의유머',
+      hostLabel: 'www.todayhumor.co.kr',
+      titleSummaryLabel: '오유 제목',
+      toggleHeading: '오늘의유머 차단',
+      toggleAriaLabel: '오늘의유머 차단 켜기'
     }
   };
   const DEFAULT_RULES = {
