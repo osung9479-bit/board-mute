@@ -144,4 +144,4 @@ Chrome Web Store 제출 전 기준은 아래와 같습니다.
 - 제출 후보 버전: `0.1.0`
 - 업로드 후보: `dist/board-mute-0.1.0.zip`
 - SHA-256: `50B5E0A4348100D4A07C5C9F43C16CBE919075ABD274C8889CA0B3C68DCFE382`
-- 남은 작업: public repository `0.1.0` 갱신 후 Chrome Web Store dashboard 입력
+- 남은 작업: Chrome Web Store dashboard 입력과 실제 제출
