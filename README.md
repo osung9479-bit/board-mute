@@ -123,7 +123,7 @@ node scripts/check-clien.js
 git diff --check
 ```
 
-기존 공식 지원 4개 사이트는 자동 검증과 실제 Chrome 최소 수동 확인을 통과한 상태입니다. 클리앙은 PC 게시판 목록 adapter 자동 검증 기준을 추가한 상태이며, 실제 Chrome 최소 수동 확인은 별도로 진행합니다. 사이트 DOM이 바뀌면 adapter와 검증 기준을 다시 확인해야 합니다.
+공식 지원 5개 사이트는 자동 검증과 실제 Chrome 최소 수동 확인을 통과한 상태입니다. 클리앙 quick action UI polish도 실제 Chrome unpacked 확장에서 확인했습니다. 사이트 DOM이 바뀌면 adapter와 검증 기준을 다시 확인해야 합니다.
 
 릴리스 ZIP은 아래 명령으로 생성합니다.
 
@@ -133,8 +133,9 @@ powershell -ExecutionPolicy Bypass -File scripts/build-release-package.ps1
 
 ## 출시 전 남은 작업
 
-Chrome Web Store 제출 전에는 아직 아래 포장 작업이 남아 있습니다.
+Chrome Web Store 제출 전 기준은 아래와 같습니다.
 
-- 클리앙 실제 Chrome 최소 수동 확인 결과 기록
-- clean public GitHub repository 생성
-- 실제 `owner/repo` 기준으로 Web Store URL 입력값 확정
+- 첫 제출 후보 버전: `0.0.3`
+- 업로드 후보: `dist/board-mute-0.0.3.zip`
+- SHA-256: `0F974E557D21BFC2C079F8D3F9D240CFA257ED17377C262A32EA8AE69FF6D5BC`
+- 남은 작업: Chrome Web Store dashboard에 package, listing, privacy, distribution, test instructions 입력
