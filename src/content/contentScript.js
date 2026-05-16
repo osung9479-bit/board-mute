@@ -15,6 +15,7 @@
   const SAVED_INLINE_DISPLAY_PRIORITY_ATTRIBUTE =
     'data-board-mute-saved-inline-display-priority';
   const WRITER_ACTION_ATTACHED_ATTRIBUTE = 'data-board-mute-writer-action-attached';
+  const WRITER_ACTION_CONTAINER_ATTRIBUTE = 'data-board-mute-writer-action-container';
   const WRITER_ACTION_STYLE_ID = 'board-mute-writer-action-style';
   const WRITER_ACTION_BUTTON_CLASS = 'board-mute-writer-action';
   const WRITER_ACTION_MENU_CLASS = 'board-mute-writer-menu';
@@ -1186,25 +1187,37 @@
     const style = document.createElement('style');
     style.id = WRITER_ACTION_STYLE_ID;
     style.textContent = `
-      .${WRITER_ACTION_BUTTON_CLASS} {
+      [${WRITER_ACTION_CONTAINER_ATTRIBUTE}="true"] > .${WRITER_ACTION_BUTTON_CLASS} {
         position: absolute;
         top: 50%;
         right: 2px;
         z-index: 2;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        width: 32px;
+        min-width: 32px;
+        height: 18px;
         transform: translateY(-50%);
         padding: 0 4px;
         border: 1px solid #b8b8b8;
         border-radius: 3px;
         background: #fff;
         color: #333;
+        appearance: none;
+        font-family: inherit;
         font-size: 11px;
         line-height: 16px;
+        white-space: nowrap;
         cursor: pointer;
         opacity: 0;
+        transition: opacity 80ms ease;
+        contain: layout paint style;
       }
 
-      ${currentSiteAdapter.writerCellSelector}:hover .${WRITER_ACTION_BUTTON_CLASS},
-      ${currentSiteAdapter.writerCellSelector}:focus-within .${WRITER_ACTION_BUTTON_CLASS} {
+      [${WRITER_ACTION_CONTAINER_ATTRIBUTE}="true"]:hover > .${WRITER_ACTION_BUTTON_CLASS},
+      [${WRITER_ACTION_CONTAINER_ATTRIBUTE}="true"]:focus-within > .${WRITER_ACTION_BUTTON_CLASS} {
         opacity: 1;
       }
 
@@ -1212,6 +1225,10 @@
         opacity: 1;
         outline: 1px solid #555;
         outline-offset: 1px;
+      }
+
+      .${WRITER_ACTION_BUTTON_CLASS}[data-board-mute-site="clien"] {
+        right: 6px;
       }
 
       .${WRITER_ACTION_MENU_CLASS} {
@@ -1831,6 +1848,29 @@
     }
   }
 
+  function getWriterActionContainer(row, writerCell) {
+    if (getCurrentSiteId() === 'clien') {
+      return row;
+    }
+
+    return writerCell;
+  }
+
+  function ensureWriterActionContainerPosition(container) {
+    if (!container || container.style.position) {
+      return;
+    }
+
+    const computedPosition =
+      typeof globalThis.getComputedStyle === 'function'
+        ? globalThis.getComputedStyle(container).position
+        : '';
+
+    if (!computedPosition || computedPosition === 'static') {
+      container.style.position = 'relative';
+    }
+  }
+
   function attachWriterQuickAddActions() {
     const rows = getPostRows();
 
@@ -1860,6 +1900,7 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = WRITER_ACTION_BUTTON_CLASS;
+      button.dataset.boardMuteSite = getCurrentSiteId();
       button.textContent = '차단';
       button.setAttribute('aria-label', '작성자 차단값 선택');
       button.addEventListener('click', (event) => {
@@ -1868,11 +1909,12 @@
         openWriterMenu(button, getWriterCandidates(writerCell));
       });
 
-      if (!writerCell.style.position) {
-        writerCell.style.position = 'relative';
-      }
+      const actionContainer = getWriterActionContainer(row, writerCell);
 
-      writerCell.append(button);
+      ensureWriterActionContainerPosition(actionContainer);
+      actionContainer.setAttribute(WRITER_ACTION_CONTAINER_ATTRIBUTE, 'true');
+
+      actionContainer.append(button);
       writerCell.setAttribute(WRITER_ACTION_ATTACHED_ATTRIBUTE, 'true');
     });
   }
