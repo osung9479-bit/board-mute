@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Board Mute",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Hide unwanted rows on supported Korean community board lists using local rules.",
   "icons": {
     "16": "assets/icons/icon-16.png",

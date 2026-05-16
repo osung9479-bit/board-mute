@@ -9,6 +9,11 @@
   const HIDDEN_REASON_ATTRIBUTE = 'data-board-mute-hidden-reason';
   const TEMPORARILY_SHOWN_ATTRIBUTE = 'data-board-mute-temporarily-shown';
   const OPTIMISTIC_WRITER_ATTRIBUTE = 'data-board-mute-optimistic-writer';
+  const SAVED_INLINE_DISPLAY_PRESENT_ATTRIBUTE =
+    'data-board-mute-saved-inline-display-present';
+  const SAVED_INLINE_DISPLAY_VALUE_ATTRIBUTE = 'data-board-mute-saved-inline-display-value';
+  const SAVED_INLINE_DISPLAY_PRIORITY_ATTRIBUTE =
+    'data-board-mute-saved-inline-display-priority';
   const WRITER_ACTION_ATTACHED_ATTRIBUTE = 'data-board-mute-writer-action-attached';
   const WRITER_ACTION_STYLE_ID = 'board-mute-writer-action-style';
   const WRITER_ACTION_BUTTON_CLASS = 'board-mute-writer-action';
@@ -712,6 +717,75 @@
     }, {});
   }
 
+  function saveRowDisplayStyle(row) {
+    if (row.hasAttribute(SAVED_INLINE_DISPLAY_PRESENT_ATTRIBUTE)) {
+      return;
+    }
+
+    const displayValue = row.style.getPropertyValue('display');
+    const displayPriority = row.style.getPropertyPriority('display');
+
+    row.setAttribute(
+      SAVED_INLINE_DISPLAY_PRESENT_ATTRIBUTE,
+      displayValue ? 'true' : 'false'
+    );
+
+    if (displayValue) {
+      row.setAttribute(SAVED_INLINE_DISPLAY_VALUE_ATTRIBUTE, displayValue);
+    } else {
+      row.removeAttribute(SAVED_INLINE_DISPLAY_VALUE_ATTRIBUTE);
+    }
+
+    if (displayPriority) {
+      row.setAttribute(SAVED_INLINE_DISPLAY_PRIORITY_ATTRIBUTE, displayPriority);
+    } else {
+      row.removeAttribute(SAVED_INLINE_DISPLAY_PRIORITY_ATTRIBUTE);
+    }
+  }
+
+  function restoreRowDisplayStyle(row) {
+    const hadInlineDisplay =
+      row.getAttribute(SAVED_INLINE_DISPLAY_PRESENT_ATTRIBUTE) === 'true';
+    const displayValue = row.getAttribute(SAVED_INLINE_DISPLAY_VALUE_ATTRIBUTE) || '';
+    const displayPriority =
+      row.getAttribute(SAVED_INLINE_DISPLAY_PRIORITY_ATTRIBUTE) || '';
+
+    if (hadInlineDisplay && displayValue) {
+      row.style.setProperty('display', displayValue, displayPriority);
+    } else {
+      row.style.removeProperty('display');
+    }
+
+    row.removeAttribute(SAVED_INLINE_DISPLAY_PRESENT_ATTRIBUTE);
+    row.removeAttribute(SAVED_INLINE_DISPLAY_VALUE_ATTRIBUTE);
+    row.removeAttribute(SAVED_INLINE_DISPLAY_PRIORITY_ATTRIBUTE);
+  }
+
+  function hidePostRow(row, reason) {
+    saveRowDisplayStyle(row);
+    row.hidden = true;
+    row.style.setProperty('display', 'none', 'important');
+    row.removeAttribute(TEMPORARILY_SHOWN_ATTRIBUTE);
+    row.setAttribute(HIDDEN_REASON_ATTRIBUTE, reason);
+  }
+
+  function showPostRow(row, options = {}) {
+    const { keepReason = false, temporarilyShown = false } = options;
+
+    row.hidden = false;
+    restoreRowDisplayStyle(row);
+
+    if (temporarilyShown) {
+      row.setAttribute(TEMPORARILY_SHOWN_ATTRIBUTE, 'true');
+    } else {
+      row.removeAttribute(TEMPORARILY_SHOWN_ATTRIBUTE);
+    }
+
+    if (!keepReason) {
+      row.removeAttribute(HIDDEN_REASON_ATTRIBUTE);
+    }
+  }
+
   function isSupportedPostRow(row) {
     return currentSiteAdapter.isSupportedPostRow(row);
   }
@@ -752,9 +826,7 @@
         return;
       }
 
-      row.hidden = true;
-      row.removeAttribute(TEMPORARILY_SHOWN_ATTRIBUTE);
-      row.setAttribute(HIDDEN_REASON_ATTRIBUTE, 'title-keyword');
+      hidePostRow(row, 'title-keyword');
       result.hiddenRows += 1;
       result.matchedKeywords[matchingKeyword] += 1;
     });
@@ -800,9 +872,7 @@
         return;
       }
 
-      row.hidden = true;
-      row.removeAttribute(TEMPORARILY_SHOWN_ATTRIBUTE);
-      row.setAttribute(HIDDEN_REASON_ATTRIBUTE, 'writer');
+      hidePostRow(row, 'writer');
       result.hiddenRows += 1;
       result.matchedWriters[matchingWriterValue] += 1;
     });
@@ -832,9 +902,7 @@
         return;
       }
 
-      row.hidden = true;
-      row.removeAttribute(TEMPORARILY_SHOWN_ATTRIBUTE);
-      row.setAttribute(HIDDEN_REASON_ATTRIBUTE, 'writer');
+      hidePostRow(row, 'writer');
       row.setAttribute(OPTIMISTIC_WRITER_ATTRIBUTE, normalizedWriterValue);
       rows.push(row);
     });
@@ -872,8 +940,7 @@
         return;
       }
 
-      row.hidden = false;
-      row.removeAttribute(HIDDEN_REASON_ATTRIBUTE);
+      showPostRow(row);
       row.removeAttribute(OPTIMISTIC_WRITER_ATTRIBUTE);
     });
 
@@ -1046,8 +1113,7 @@
     getBoardMuteHiddenRows()
       .filter((row) => row.hidden)
       .forEach((row) => {
-        row.hidden = false;
-        row.setAttribute(TEMPORARILY_SHOWN_ATTRIBUTE, 'true');
+        showPostRow(row, { keepReason: true, temporarilyShown: true });
       });
 
     updateRevealControl();
@@ -1055,8 +1121,7 @@
 
   function hideTemporarilyShownRows() {
     getTemporarilyShownRows().forEach((row) => {
-      row.hidden = true;
-      row.removeAttribute(TEMPORARILY_SHOWN_ATTRIBUTE);
+      hidePostRow(row, row.getAttribute(HIDDEN_REASON_ATTRIBUTE) || 'writer');
     });
 
     updateRevealControl();
@@ -1828,9 +1893,7 @@
         return;
       }
 
-      row.hidden = false;
-      row.removeAttribute(HIDDEN_REASON_ATTRIBUTE);
-      row.removeAttribute(TEMPORARILY_SHOWN_ATTRIBUTE);
+      showPostRow(row);
     });
   }
 
