@@ -57,6 +57,52 @@
       titleSummaryLabel: '오유 제목',
       toggleHeading: '오늘의유머 차단',
       toggleAriaLabel: '오늘의유머 차단 켜기'
+    },
+    quasarzone: {
+      siteId: 'quasarzone',
+      displayName: '퀘이사존',
+      optionLabel: '퀘이사존',
+      hostLabel: 'quasarzone.com/bbs',
+      titleSummaryLabel: '퀘존 제목',
+      toggleHeading: '퀘이사존 차단',
+      toggleAriaLabel: '퀘이사존 차단 켜기'
+    },
+    slrclub: {
+      siteId: 'slrclub',
+      displayName: 'SLR클럽',
+      optionLabel: 'SLR클럽',
+      hostLabel: 'www.slrclub.com/bbs/zboard.php',
+      titleSummaryLabel: 'SLR 제목',
+      toggleHeading: 'SLR클럽 차단',
+      toggleAriaLabel: 'SLR클럽 차단 켜기'
+    },
+    saramin: {
+      siteId: 'saramin',
+      displayName: '사람인',
+      optionLabel: '사람인',
+      hostLabel: 'www.saramin.co.kr/zf_user/search',
+      titleSummaryLabel: '공고/조건',
+      writerSummaryLabel: '회사/공고',
+      titleSectionTitle: '공고/조건 키워드',
+      titleInputAriaLabel: '공고/조건 키워드',
+      titleRemoveLabel: '공고/조건 키워드 삭제',
+      writerSectionTitle: '회사/공고 숨김값',
+      writerInputAriaLabel: '회사 ID, 회사명, 공고 ID 값',
+      writerTypeAriaLabel: '회사/공고 숨김값 분류',
+      writerRemoveLabel: '회사/공고 숨김값 삭제',
+      writerFilterAriaLabel: '회사/공고 숨김값 필터',
+      writerSourceFilterAriaLabel: '회사/공고 숨김값 출처 필터',
+      writerSearchAriaLabel: '회사/공고 숨김값 검색',
+      writerTypeLabels: {
+        uid: '회사ID',
+        nick: '회사명',
+        unknown: '공고/기타'
+      },
+      hiddenWriterTypes: ['ip'],
+      toggleHeading: '사람인 숨김',
+      toggleAriaLabel: '사람인 숨김 켜기',
+      disabledText: '사람인 숨김 꺼짐',
+      enabledText: '사람인 숨김 켜짐'
     }
   };
   const DEFAULT_RULES = {
@@ -68,20 +114,29 @@
   const statusDot = document.querySelector('.status-dot');
   const siteSelect = document.getElementById('siteSelect');
   const siteTitleSummaryLabel = document.getElementById('siteTitleSummaryLabel');
+  const writerSummaryLabel = document.getElementById('writerSummaryLabel');
   const titleKeywordCount = document.getElementById('titleKeywordCount');
   const writerValueCount = document.getElementById('writerValueCount');
   const siteToggleHeading = document.getElementById('siteToggleHeading');
   const siteEnabledText = document.getElementById('siteEnabledText');
+  const siteEnabledBadge = document.getElementById('siteEnabledBadge');
   const siteEnabledToggle = document.getElementById('siteEnabledToggle');
   const siteRulesHeading = document.getElementById('siteRulesHeading');
   const siteRulesHost = document.getElementById('siteRulesHost');
+  const titleKeywordsHeading = document.getElementById('titleKeywordsHeading');
   const titleKeywordList = document.getElementById('titleKeywordList');
+  const titleKeywordSectionCount = document.getElementById('titleKeywordSectionCount');
+  const writerValuesHeading = document.getElementById('writerValuesHeading');
   const writerValueList = document.getElementById('writerValueList');
+  const writerValueSectionCount = document.getElementById('writerValueSectionCount');
   const titleKeywordForm = document.getElementById('titleKeywordForm');
   const titleKeywordInput = document.getElementById('titleKeywordInput');
   const titleKeywordAddButton = document.getElementById('titleKeywordAddButton');
   const titleKeywordFeedback = document.getElementById('titleKeywordFeedback');
   const globalTitleKeywordCount = document.getElementById('globalTitleKeywordCount');
+  const globalTitleKeywordSectionCount = document.getElementById(
+    'globalTitleKeywordSectionCount'
+  );
   const globalTitleKeywordList = document.getElementById('globalTitleKeywordList');
   const globalTitleKeywordForm = document.getElementById('globalTitleKeywordForm');
   const globalTitleKeywordInput = document.getElementById('globalTitleKeywordInput');
@@ -94,6 +149,7 @@
   const writerValueFeedback = document.getElementById('writerValueFeedback');
   const writerSourceFilterSelect = document.getElementById('writerSourceFilterSelect');
   const writerSearchInput = document.getElementById('writerSearchInput');
+  const writerFilterTabs = document.querySelector('.writer-filter-tabs');
   const writerFilterButtons = Array.from(document.querySelectorAll('[data-writer-filter]'));
   const WRITER_TYPE_LABELS = {
     uid: '아이디',
@@ -169,8 +225,63 @@
     return SITE_CONFIGS[currentSiteId] || SITE_CONFIGS[DEFAULT_SITE_ID];
   }
 
+  function getCurrentSiteLabel(key, fallback) {
+    const siteConfig = getCurrentSiteConfig();
+    const value = siteConfig[key];
+
+    return typeof value === 'string' && value ? value : fallback;
+  }
+
   function getSiteDisabledText() {
-    return `${getCurrentSiteConfig().displayName} 차단 꺼짐`;
+    return getCurrentSiteLabel(
+      'disabledText',
+      `${getCurrentSiteConfig().displayName} 차단 꺼짐`
+    );
+  }
+
+  function getSiteEnabledText() {
+    return getCurrentSiteLabel(
+      'enabledText',
+      `${getCurrentSiteConfig().displayName} 차단 켜짐`
+    );
+  }
+
+  function isWriterTypeHidden(type) {
+    const hiddenWriterTypes = getCurrentSiteConfig().hiddenWriterTypes || [];
+
+    return hiddenWriterTypes.includes(type);
+  }
+
+  function updateWriterTypeControlLabels() {
+    const selectedWriterType = writerValueTypeSelect.value || 'unknown';
+
+    Array.from(writerValueTypeSelect.options).forEach((option) => {
+      const type = option.value || 'unknown';
+      const isHidden = isWriterTypeHidden(type);
+
+      option.textContent = getWriterTypeLabel(type);
+      option.hidden = isHidden;
+      option.disabled = isHidden;
+    });
+
+    if (isWriterTypeHidden(selectedWriterType)) {
+      writerValueTypeSelect.value = 'unknown';
+    }
+
+    writerFilterButtons.forEach((button) => {
+      const type = button.dataset.writerFilter || 'all';
+      const isHidden = type !== 'all' && isWriterTypeHidden(type);
+
+      if (type !== 'all') {
+        button.textContent = getWriterTypeLabel(type);
+      }
+
+      button.hidden = isHidden;
+    });
+
+    if (currentWriterFilter !== 'all' && isWriterTypeHidden(currentWriterFilter)) {
+      currentWriterFilter = 'all';
+    }
   }
 
   function updateSiteLabels() {
@@ -181,10 +292,44 @@
     }
 
     siteTitleSummaryLabel.textContent = siteConfig.titleSummaryLabel;
+    writerSummaryLabel.textContent = getCurrentSiteLabel('writerSummaryLabel', '사이트 작성자');
     siteToggleHeading.textContent = siteConfig.toggleHeading;
     siteEnabledToggle.setAttribute('aria-label', siteConfig.toggleAriaLabel);
     siteRulesHeading.textContent = `${siteConfig.displayName} 규칙`;
     siteRulesHost.textContent = siteConfig.hostLabel;
+    titleKeywordsHeading.textContent = getCurrentSiteLabel(
+      'titleSectionTitle',
+      '사이트 제목 키워드'
+    );
+    titleKeywordInput.setAttribute(
+      'aria-label',
+      getCurrentSiteLabel('titleInputAriaLabel', '제목 키워드')
+    );
+    writerValuesHeading.textContent = getCurrentSiteLabel(
+      'writerSectionTitle',
+      '사이트 작성자/아이디/IP'
+    );
+    writerValueInput.setAttribute(
+      'aria-label',
+      getCurrentSiteLabel('writerInputAriaLabel', '사이트별 작성자, 아이디, IP 값')
+    );
+    writerValueTypeSelect.setAttribute(
+      'aria-label',
+      getCurrentSiteLabel('writerTypeAriaLabel', '사이트별 작성자 차단값 분류')
+    );
+    writerFilterTabs.setAttribute(
+      'aria-label',
+      getCurrentSiteLabel('writerFilterAriaLabel', '사이트별 작성자 차단값 필터')
+    );
+    writerSourceFilterSelect.setAttribute(
+      'aria-label',
+      getCurrentSiteLabel('writerSourceFilterAriaLabel', '사이트별 작성자 차단값 출처 필터')
+    );
+    writerSearchInput.setAttribute(
+      'aria-label',
+      getCurrentSiteLabel('writerSearchAriaLabel', '사이트별 작성자 차단값 검색')
+    );
+    updateWriterTypeControlLabels();
   }
 
   function getDefaultRulesDocument() {
@@ -286,7 +431,7 @@
         const removeLabel = options.removeLabel || '삭제';
         removeButton.className = 'chip-remove-button';
         removeButton.type = 'button';
-        removeButton.textContent = 'x';
+        removeButton.textContent = '삭제';
         removeButton.disabled = isSaving;
         removeButton.setAttribute('aria-label', `${removeLabel}: ${value}`);
         removeButton.addEventListener('click', () => {
@@ -300,7 +445,9 @@
   }
 
   function getWriterTypeLabel(type) {
-    return WRITER_TYPE_LABELS[type] || WRITER_TYPE_LABELS.unknown;
+    const siteLabels = getCurrentSiteConfig().writerTypeLabels || {};
+
+    return siteLabels[type] || WRITER_TYPE_LABELS[type] || WRITER_TYPE_LABELS.unknown;
   }
 
   function getWriterSourceLabel(source) {
@@ -405,6 +552,7 @@
     filteredEntries.forEach((entry) => {
       const item = document.createElement('li');
       item.className = 'writer-entry';
+      item.classList.toggle('is-page-source', entry.source === 'page');
 
       const typeLabel = document.createElement('span');
       typeLabel.className = `writer-entry-type ${entry.type}`;
@@ -429,9 +577,12 @@
       const removeButton = document.createElement('button');
       removeButton.className = 'writer-entry-remove-button';
       removeButton.type = 'button';
-      removeButton.textContent = 'x';
+      removeButton.textContent = '삭제';
       removeButton.disabled = isSaving;
-      removeButton.setAttribute('aria-label', `작성자/아이디/IP 값 삭제: ${entry.value}`);
+      removeButton.setAttribute(
+        'aria-label',
+        `${getCurrentSiteLabel('writerRemoveLabel', '사이트별 작성자/아이디/IP 값 삭제')}: ${entry.value}`
+      );
       removeButton.addEventListener('click', () => {
         deleteWriterValue(entry.value);
       });
@@ -485,12 +636,17 @@
     };
     siteEnabledToggle.checked = isSiteEnabled;
     siteEnabledText.textContent = isSiteEnabled ? '현재 페이지에 규칙 적용 중' : '규칙 보존, 숨김 중지';
+    siteEnabledBadge.textContent = isSiteEnabled ? '켜짐' : '꺼짐';
+    siteEnabledBadge.classList.toggle('is-off', !isSiteEnabled);
     titleKeywordCount.textContent = String(titleKeywords.length);
     globalTitleKeywordCount.textContent = String(currentGlobalRules.titleKeywords.length);
     writerValueCount.textContent = String(writerValues.length);
+    titleKeywordSectionCount.textContent = `${titleKeywords.length}개`;
+    globalTitleKeywordSectionCount.textContent = `${currentGlobalRules.titleKeywords.length}개`;
+    writerValueSectionCount.textContent = `${writerValues.length}개`;
     renderList(titleKeywordList, titleKeywords, {
       onRemove: deleteTitleKeyword,
-      removeLabel: '제목 키워드 삭제'
+      removeLabel: getCurrentSiteLabel('titleRemoveLabel', '제목 키워드 삭제')
     });
     renderList(globalTitleKeywordList, currentGlobalRules.titleKeywords, {
       onRemove: deleteGlobalTitleKeyword,
@@ -513,6 +669,8 @@
   function loadCurrentSiteRules() {
     statusText.textContent = '규칙 읽는 중';
     siteEnabledText.textContent = '상태 확인 중';
+    siteEnabledBadge.textContent = '확인중';
+    siteEnabledBadge.classList.remove('is-off');
     updateSiteLabels();
 
     return readRules()
@@ -673,9 +831,7 @@
         renderSavedRulesDocument(nextRulesDocument);
         setFeedback(
           writerValueFeedback,
-          isEnabled
-            ? `${getCurrentSiteConfig().displayName} 차단 켜짐`
-            : getSiteDisabledText()
+          isEnabled ? getSiteEnabledText() : getSiteDisabledText()
         );
       })
       .catch(() => {

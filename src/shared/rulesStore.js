@@ -8,6 +8,10 @@
   const RULIWEB_SITE_ID = 'ruliweb';
   const MLBPARK_SITE_ID = 'mlbpark';
   const CLIEN_SITE_ID = 'clien';
+  const TODAYHUMOR_SITE_ID = 'todayhumor';
+  const QUASARZONE_SITE_ID = 'quasarzone';
+  const SLRCLUB_SITE_ID = 'slrclub';
+  const SARAMIN_SITE_ID = 'saramin';
   const DEFAULT_RULES = {
     titleKeywords: ['막글', '나는내향적', '로또'],
     writerValues: ['야갤', '손발이시립디다', 'stool3653']
@@ -274,10 +278,7 @@
         ...rulesDocument.global.titleKeywords,
         ...siteRules.titleKeywords
       ]),
-      writerValues: uniqueValues([
-        ...rulesDocument.global.writerValues,
-        ...siteRules.writerValues
-      ])
+      writerValues: uniqueValues(siteRules.writerValues)
     };
   }
 
@@ -350,6 +351,41 @@
         parsedUrl.pathname.startsWith('/service/board/')
       ) {
         return CLIEN_SITE_ID;
+      }
+
+      if (
+        parsedUrl.hostname === 'www.todayhumor.co.kr' &&
+        (
+          parsedUrl.pathname === '/' ||
+          parsedUrl.pathname === '/board/list.php' ||
+          parsedUrl.pathname === '/board/view.php'
+        )
+      ) {
+        return TODAYHUMOR_SITE_ID;
+      }
+
+      if (
+        parsedUrl.hostname === 'quasarzone.com' &&
+        parsedUrl.pathname.startsWith('/bbs/')
+      ) {
+        return QUASARZONE_SITE_ID;
+      }
+
+      if (
+        parsedUrl.hostname === 'www.slrclub.com' &&
+        parsedUrl.pathname === '/bbs/zboard.php'
+      ) {
+        return SLRCLUB_SITE_ID;
+      }
+
+      if (
+        parsedUrl.hostname === 'www.saramin.co.kr' &&
+        (
+          parsedUrl.pathname === '/zf_user/search' ||
+          parsedUrl.pathname === '/zf_user/jobs/list/job-category'
+        )
+      ) {
+        return SARAMIN_SITE_ID;
       }
     } catch (error) {
       return null;
@@ -490,6 +526,10 @@
     RULIWEB_SITE_ID,
     MLBPARK_SITE_ID,
     CLIEN_SITE_ID,
+    TODAYHUMOR_SITE_ID,
+    QUASARZONE_SITE_ID,
+    SLRCLUB_SITE_ID,
+    SARAMIN_SITE_ID,
     getDefaultRulesDocument,
     getSiteIdFromUrl,
     getSiteRules,

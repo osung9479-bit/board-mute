@@ -8,6 +8,8 @@
   };
   const HIDDEN_REASON_ATTRIBUTE = 'data-board-mute-hidden-reason';
   const TEMPORARILY_SHOWN_ATTRIBUTE = 'data-board-mute-temporarily-shown';
+  const TEMPORARY_HIDDEN_ATTRIBUTE = 'data-board-mute-temporary-hidden';
+  const TEMPORARY_PICK_HIGHLIGHTED_ATTRIBUTE = 'data-board-mute-pick-highlighted';
   const OPTIMISTIC_WRITER_ATTRIBUTE = 'data-board-mute-optimistic-writer';
   const SAVED_INLINE_DISPLAY_PRESENT_ATTRIBUTE =
     'data-board-mute-saved-inline-display-present';
@@ -24,11 +26,21 @@
   const WRITER_ACTION_TOAST_ACTION_CLASS = 'board-mute-toast-action';
   const REVEAL_CONTROL_STYLE_ID = 'board-mute-reveal-control-style';
   const REVEAL_CONTROL_CLASS = 'board-mute-reveal-control';
+  const REVEAL_CONTROL_STATUS_CLASS = 'board-mute-reveal-control-status';
   const REVEAL_CONTROL_TEXT_CLASS = 'board-mute-reveal-control-text';
+  const REVEAL_CONTROL_DETAIL_CLASS = 'board-mute-reveal-control-detail';
+  const REVEAL_CONTROL_ACTIONS_CLASS = 'board-mute-reveal-control-actions';
   const REVEAL_CONTROL_BUTTON_CLASS = 'board-mute-reveal-control-button';
+  const REVEAL_CONTROL_TOGGLE_BUTTON_CLASS = 'board-mute-reveal-control-toggle-button';
   const REVEAL_CONTROL_RECENT_BUTTON_CLASS = 'board-mute-reveal-control-recent-button';
+  const TEMPORARY_HIDE_BUTTON_CLASS = 'board-mute-temporary-hide-button';
+  const TEMPORARY_RESTORE_BUTTON_CLASS = 'board-mute-temporary-restore-button';
+  const TEMPORARY_PICKING_BODY_CLASS = 'board-mute-temporary-hide-picking';
+  const TEMPORARY_PICK_LABEL_CLASS = 'board-mute-temporary-hide-label';
   const RECENT_WRITER_PANEL_CLASS = 'board-mute-recent-writer-panel';
   const RECENT_WRITER_PANEL_HEADER_CLASS = 'board-mute-recent-writer-panel-header';
+  const RECENT_WRITER_PANEL_TITLE_CLASS = 'board-mute-recent-writer-panel-title';
+  const RECENT_WRITER_PANEL_COUNT_CLASS = 'board-mute-recent-writer-panel-count';
   const RECENT_WRITER_PANEL_LIST_CLASS = 'board-mute-recent-writer-list';
   const RECENT_WRITER_PANEL_ENTRY_CLASS = 'board-mute-recent-writer-entry';
   const RECENT_WRITER_PANEL_TYPE_CLASS = 'board-mute-recent-writer-type';
@@ -76,6 +88,28 @@
   const TODAYHUMOR_WRITER_LINK_SELECTOR = 'a.list_name_member[href*="mn="]';
   const TODAYHUMOR_VIEW_TITLE_SELECTOR = '.viewSubjectDiv';
   const TODAYHUMOR_VIEW_WRITER_SELECTOR = '#viewPageWriterNameSpan[mn]';
+  const QUASARZONE_POST_ROW_SELECTOR = 'tr';
+  const QUASARZONE_TITLE_CELL_SELECTOR = 'p.tit';
+  const QUASARZONE_TITLE_LINK_SELECTOR = 'a.subject-link[href*="/bbs/"][href*="/views/"]';
+  const QUASARZONE_WRITER_CELL_SELECTOR = 'div.user-nick-wrap.nick[data-id]';
+  const SLRCLUB_POST_ROW_SELECTOR = 'tr';
+  const SLRCLUB_TITLE_CELL_SELECTOR = 'td.sbj';
+  const SLRCLUB_TITLE_LINK_SELECTOR = 'td.sbj a[href*="/bbs/vx2.php"][href*="id="][href*="no="]';
+  const SLRCLUB_WRITER_CELL_SELECTOR = 'td.list_name';
+  const SLRCLUB_WRITER_ID_SELECTOR = 'span.lop[data-xuid]';
+  const SARAMIN_SEARCH_ROW_SELECTOR = '.item_recruit[value]';
+  const SARAMIN_CATEGORY_ROW_SELECTOR = '.box_item, .list_item[id^="rec-"]';
+  const SARAMIN_POST_ROW_SELECTOR = `${SARAMIN_SEARCH_ROW_SELECTOR}, ${SARAMIN_CATEGORY_ROW_SELECTOR}`;
+  const SARAMIN_SEARCH_TITLE_LINK_SELECTOR = '.area_job .job_tit a[href*="rec_idx="]';
+  const SARAMIN_CATEGORY_TITLE_LINK_SELECTOR =
+    '.notification_info .job_tit a.str_tit[href*="rec_idx="]';
+  const SARAMIN_SEARCH_COMPANY_CELL_SELECTOR = '.area_corp';
+  const SARAMIN_CATEGORY_COMPANY_CELL_SELECTOR = '.col.company_nm';
+  const SARAMIN_SEARCH_COMPANY_LINK_SELECTOR = '.area_corp .corp_name a[href*="csn="]';
+  const SARAMIN_CATEGORY_COMPANY_LINK_SELECTOR =
+    '.col.company_nm a.str_tit[href*="csn="]';
+  const SARAMIN_COMPANY_ID_PREFIX = 'csn:';
+  const SARAMIN_RECRUIT_ID_PREFIX = 'rec:';
   const WRITER_TYPE_LABELS = {
     uid: '아이디',
     ip: 'IP',
@@ -89,6 +123,11 @@
   let applyTimer = null;
   let postRowObserver = null;
   let storageChangeListenerAttached = false;
+  const temporaryHideState = {
+    isPicking: false,
+    highlightedElement: null,
+    hiddenEntries: []
+  };
 
   const dcinsideAdapter = {
     siteId: 'dcinside',
@@ -825,13 +864,492 @@
     }
   };
 
+  function getQuasarzoneWriterId(writerCell) {
+    return (writerCell.getAttribute('data-id') || '').trim();
+  }
+
+  function getQuasarzoneWriterDisplayName(writerCell) {
+    const dataNick = (writerCell.getAttribute('data-nick') || '').trim();
+
+    if (dataNick) {
+      return dataNick;
+    }
+
+    const clonedWriterCell = writerCell.cloneNode(true);
+
+    clonedWriterCell
+      .querySelectorAll(`.${WRITER_ACTION_BUTTON_CLASS}`)
+      .forEach((element) => element.remove());
+
+    return (clonedWriterCell.textContent || '').trim();
+  }
+
+  const quasarzoneAdapter = {
+    siteId: 'quasarzone',
+    displayName: '퀘이사존',
+    postRowSelector: QUASARZONE_POST_ROW_SELECTOR,
+    writerCellSelector: QUASARZONE_WRITER_CELL_SELECTOR,
+
+    matchesUrl(url) {
+      try {
+        const parsedUrl = new URL(url);
+
+        return (
+          parsedUrl.hostname === 'quasarzone.com' &&
+          parsedUrl.pathname.startsWith('/bbs/')
+        );
+      } catch (error) {
+        return false;
+      }
+    },
+
+    isSupportedPostRow(row) {
+      if (!row.matches(this.postRowSelector)) {
+        return false;
+      }
+
+      const titleLink = row.querySelector(QUASARZONE_TITLE_LINK_SELECTOR);
+      const writerCell = row.querySelector(this.writerCellSelector);
+
+      return Boolean(titleLink && writerCell && getQuasarzoneWriterId(writerCell));
+    },
+
+    getPostRows(root) {
+      return Array.from(root.querySelectorAll(this.postRowSelector)).filter((row) =>
+        this.isSupportedPostRow(row)
+      );
+    },
+
+    containsPostRows(node) {
+      if (!node || node.nodeType !== 1) {
+        return false;
+      }
+
+      if (node.matches(this.postRowSelector) && this.isSupportedPostRow(node)) {
+        return true;
+      }
+
+      return Array.from(node.querySelectorAll(this.postRowSelector)).some((row) =>
+        this.isSupportedPostRow(row)
+      );
+    },
+
+    getTitleText(row) {
+      const titleLink = row.querySelector(QUASARZONE_TITLE_LINK_SELECTOR);
+      const titleCell = row.querySelector(QUASARZONE_TITLE_CELL_SELECTOR);
+
+      return titleLink ? titleLink.textContent : titleCell ? titleCell.textContent : '';
+    },
+
+    getWriterCell(row) {
+      return row.querySelector(this.writerCellSelector);
+    },
+
+    getWriterValues(row) {
+      const writerCell = this.getWriterCell(row);
+
+      if (!writerCell) {
+        return [];
+      }
+
+      return getUniqueTrimmedValues([
+        getQuasarzoneWriterId(writerCell),
+        getQuasarzoneWriterDisplayName(writerCell)
+      ]);
+    },
+
+    getWriterCandidates(writerCell) {
+      const writerId = getQuasarzoneWriterId(writerCell);
+      const displayName = getQuasarzoneWriterDisplayName(writerCell);
+      const candidates = [];
+
+      if (writerId) {
+        candidates.push({
+          type: 'uid',
+          label: '회원ID',
+          value: writerId
+        });
+      }
+
+      if (displayName) {
+        candidates.push({
+          type: 'nick',
+          label: '닉네임(주의)',
+          value: displayName
+        });
+      }
+
+      return candidates;
+    }
+  };
+
+  function getSlrclubWriterId(writerCell) {
+    const writerElement = writerCell.querySelector(SLRCLUB_WRITER_ID_SELECTOR);
+
+    return writerElement ? (writerElement.getAttribute('data-xuid') || '').trim() : '';
+  }
+
+  function getSlrclubWriterDisplayName(writerCell) {
+    const writerElement = writerCell.querySelector(SLRCLUB_WRITER_ID_SELECTOR);
+    const sourceElement = writerElement || writerCell;
+    const clonedWriterCell = sourceElement.cloneNode(true);
+
+    clonedWriterCell
+      .querySelectorAll(`.${WRITER_ACTION_BUTTON_CLASS}`)
+      .forEach((element) => element.remove());
+
+    return (clonedWriterCell.textContent || '').trim();
+  }
+
+  const slrclubAdapter = {
+    siteId: 'slrclub',
+    displayName: 'SLR클럽',
+    postRowSelector: SLRCLUB_POST_ROW_SELECTOR,
+    writerCellSelector: SLRCLUB_WRITER_CELL_SELECTOR,
+
+    matchesUrl(url) {
+      try {
+        const parsedUrl = new URL(url);
+
+        return (
+          parsedUrl.hostname === 'www.slrclub.com' &&
+          parsedUrl.pathname === '/bbs/zboard.php'
+        );
+      } catch (error) {
+        return false;
+      }
+    },
+
+    isSupportedPostRow(row) {
+      if (!row.matches(this.postRowSelector)) {
+        return false;
+      }
+
+      const titleLink = row.querySelector(SLRCLUB_TITLE_LINK_SELECTOR);
+      const writerCell = row.querySelector(this.writerCellSelector);
+
+      return Boolean(titleLink && writerCell && getSlrclubWriterId(writerCell));
+    },
+
+    getPostRows(root) {
+      return Array.from(root.querySelectorAll(this.postRowSelector)).filter((row) =>
+        this.isSupportedPostRow(row)
+      );
+    },
+
+    containsPostRows(node) {
+      if (!node || node.nodeType !== 1) {
+        return false;
+      }
+
+      if (node.matches(this.postRowSelector) && this.isSupportedPostRow(node)) {
+        return true;
+      }
+
+      return Array.from(node.querySelectorAll(this.postRowSelector)).some((row) =>
+        this.isSupportedPostRow(row)
+      );
+    },
+
+    getTitleText(row) {
+      const titleLink = row.querySelector(SLRCLUB_TITLE_LINK_SELECTOR);
+      const titleCell = row.querySelector(SLRCLUB_TITLE_CELL_SELECTOR);
+
+      return titleLink ? titleLink.textContent : titleCell ? titleCell.textContent : '';
+    },
+
+    getWriterCell(row) {
+      return row.querySelector(this.writerCellSelector);
+    },
+
+    getWriterValues(row) {
+      const writerCell = this.getWriterCell(row);
+
+      if (!writerCell) {
+        return [];
+      }
+
+      return getUniqueTrimmedValues([
+        getSlrclubWriterId(writerCell),
+        getSlrclubWriterDisplayName(writerCell)
+      ]);
+    },
+
+    getWriterCandidates(writerCell) {
+      const writerId = getSlrclubWriterId(writerCell);
+      const displayName = getSlrclubWriterDisplayName(writerCell);
+      const candidates = [];
+
+      if (writerId) {
+        candidates.push({
+          type: 'uid',
+          label: '회원ID',
+          value: writerId
+        });
+      }
+
+      if (displayName) {
+        candidates.push({
+          type: 'nick',
+          label: '닉네임(주의)',
+          value: displayName
+        });
+      }
+
+      return candidates;
+    }
+  };
+
+  function getSaraminUrlParamFromElement(element, paramName) {
+    const href = element ? element.getAttribute('href') || '' : '';
+
+    if (!href) {
+      return '';
+    }
+
+    try {
+      return new URL(href, getCurrentUrl()).searchParams.get(paramName) || '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function getSaraminTitleLink(row) {
+    return (
+      row.querySelector(SARAMIN_SEARCH_TITLE_LINK_SELECTOR) ||
+      row.querySelector(SARAMIN_CATEGORY_TITLE_LINK_SELECTOR) ||
+      row.querySelector('a[href*="rec_idx="]')
+    );
+  }
+
+  function getSaraminCompanyCell(row) {
+    return (
+      row.querySelector(SARAMIN_SEARCH_COMPANY_CELL_SELECTOR) ||
+      row.querySelector(SARAMIN_CATEGORY_COMPANY_CELL_SELECTOR)
+    );
+  }
+
+  function getSaraminCompanyLink(row) {
+    return (
+      row.querySelector(SARAMIN_SEARCH_COMPANY_LINK_SELECTOR) ||
+      row.querySelector(SARAMIN_CATEGORY_COMPANY_LINK_SELECTOR) ||
+      row.querySelector('a[href*="csn="]')
+    );
+  }
+
+  function getSaraminRecruitId(row) {
+    const rowValue = row.matches(SARAMIN_SEARCH_ROW_SELECTOR)
+      ? (row.getAttribute('value') || '').trim()
+      : '';
+
+    if (rowValue) {
+      return rowValue;
+    }
+
+    const rowId = row.matches('.list_item[id^="rec-"]')
+      ? (row.getAttribute('id') || '').trim()
+      : '';
+    const idMatch = /^rec-(.+)$/.exec(rowId);
+
+    if (idMatch && idMatch[1]) {
+      return idMatch[1].trim();
+    }
+
+    return getSaraminUrlParamFromElement(getSaraminTitleLink(row), 'rec_idx').trim();
+  }
+
+  function getSaraminCompanyId(row) {
+    const companyLink = getSaraminCompanyLink(row);
+    const linkCsn = getSaraminUrlParamFromElement(companyLink, 'csn').trim();
+
+    if (linkCsn) {
+      return `${SARAMIN_COMPANY_ID_PREFIX}${linkCsn}`;
+    }
+
+    const companyCell = getSaraminCompanyCell(row);
+    const csnElement =
+      row.querySelector('[csn]') ||
+      row.querySelector('[data-csn]') ||
+      (companyCell ? companyCell.querySelector('[value]') : null);
+    const rawCsn = csnElement
+      ? (
+          csnElement.getAttribute('csn') ||
+          csnElement.getAttribute('data-csn') ||
+          csnElement.getAttribute('value') ||
+          ''
+        ).trim()
+      : '';
+
+    return rawCsn ? `${SARAMIN_COMPANY_ID_PREFIX}${rawCsn}` : '';
+  }
+
+  function getSaraminRecruitValue(row) {
+    const recruitId = getSaraminRecruitId(row);
+
+    return recruitId ? `${SARAMIN_RECRUIT_ID_PREFIX}${recruitId}` : '';
+  }
+
+  function getSaraminCompanyDisplayName(row) {
+    const companyCell = getSaraminCompanyCell(row);
+    const companyLink = getSaraminCompanyLink(row);
+    const sourceElement = companyLink || companyCell;
+
+    if (!sourceElement) {
+      return '';
+    }
+
+    const clonedElement = sourceElement.cloneNode(true);
+
+    clonedElement
+      .querySelectorAll(`.${WRITER_ACTION_BUTTON_CLASS}`)
+      .forEach((element) => element.remove());
+
+    return (clonedElement.textContent || '').trim();
+  }
+
+  function getSaraminRowText(row, selectors) {
+    return getUniqueTrimmedValues(
+      selectors.map((selector) => row.querySelector(selector)?.textContent || '')
+    ).join(' ');
+  }
+
+  function getTopLevelSaraminRows(rows) {
+    return rows.filter(
+      (row) => !rows.some((candidate) => candidate !== row && candidate.contains(row))
+    );
+  }
+
+  const saraminAdapter = {
+    siteId: 'saramin',
+    displayName: '사람인',
+    postRowSelector: SARAMIN_POST_ROW_SELECTOR,
+    writerCellSelector: `${SARAMIN_SEARCH_COMPANY_CELL_SELECTOR}, ${SARAMIN_CATEGORY_COMPANY_CELL_SELECTOR}`,
+
+    matchesUrl(url) {
+      try {
+        const parsedUrl = new URL(url);
+
+        return (
+          parsedUrl.hostname === 'www.saramin.co.kr' &&
+          (parsedUrl.pathname === '/zf_user/search' ||
+            parsedUrl.pathname === '/zf_user/jobs/list/job-category')
+        );
+      } catch (error) {
+        return false;
+      }
+    },
+
+    isSupportedPostRow(row) {
+      if (!row.matches(this.postRowSelector)) {
+        return false;
+      }
+
+      return Boolean(
+        getSaraminTitleLink(row) &&
+        getSaraminCompanyCell(row) &&
+        getSaraminRecruitId(row) &&
+        (getSaraminCompanyId(row) || getSaraminCompanyDisplayName(row))
+      );
+    },
+
+    getPostRows(root) {
+      const rows = Array.from(root.querySelectorAll(this.postRowSelector)).filter((row) =>
+        this.isSupportedPostRow(row)
+      );
+
+      return getTopLevelSaraminRows(rows);
+    },
+
+    containsPostRows(node) {
+      if (!node || node.nodeType !== 1) {
+        return false;
+      }
+
+      if (node.matches(this.postRowSelector) && this.isSupportedPostRow(node)) {
+        return true;
+      }
+
+      return this.getPostRows(node).length > 0;
+    },
+
+    getTitleText(row) {
+      const titleLink = getSaraminTitleLink(row);
+      const titleText = titleLink ? titleLink.textContent : '';
+      const detailText = getSaraminRowText(row, [
+        '.area_job .job_condition',
+        '.area_job .job_sector',
+        '.notification_info .job_meta',
+        '.job_meta',
+        '.recruit_info',
+        '.col.recruit_info',
+        '.support_info'
+      ]);
+
+      return getUniqueTrimmedValues([titleText, detailText]).join(' ');
+    },
+
+    getWriterCell(row) {
+      return getSaraminCompanyCell(row);
+    },
+
+    getWriterValues(row) {
+      return getUniqueTrimmedValues([
+        getSaraminCompanyId(row),
+        getSaraminCompanyDisplayName(row),
+        getSaraminRecruitValue(row)
+      ]);
+    },
+
+    getWriterCandidates(writerCell) {
+      const row = writerCell.closest(SARAMIN_POST_ROW_SELECTOR);
+
+      if (!row) {
+        return [];
+      }
+
+      const companyId = getSaraminCompanyId(row);
+      const companyName = getSaraminCompanyDisplayName(row);
+      const recruitValue = getSaraminRecruitValue(row);
+      const candidates = [];
+
+      if (companyId) {
+        candidates.push({
+          type: 'uid',
+          label: '회사ID',
+          value: companyId
+        });
+      }
+
+      if (companyName) {
+        candidates.push({
+          type: 'nick',
+          label: '회사명',
+          value: companyName
+        });
+      }
+
+      if (recruitValue) {
+        candidates.push({
+          type: 'unknown',
+          label: '공고',
+          value: recruitValue
+        });
+      }
+
+      return candidates;
+    }
+  };
+
   const siteAdapters = [
     dcinsideAdapter,
     fmkoreaAdapter,
     ruliwebAdapter,
     mlbparkAdapter,
     clienAdapter,
-    todayhumorAdapter
+    todayhumorAdapter,
+    quasarzoneAdapter,
+    slrclubAdapter,
+    saraminAdapter
   ];
   const currentSiteAdapter = getCurrentSiteAdapter();
 
@@ -854,6 +1372,52 @@
 
   function getCurrentSiteDisplayName() {
     return currentSiteAdapter.displayName || currentSiteAdapter.siteId;
+  }
+
+  function getCurrentSiteCopy() {
+    if (getCurrentSiteId() === 'saramin') {
+      return {
+        hiddenWriterLabel: '회사/공고',
+        hiddenTitleLabel: '공고/조건',
+        activeStatus: '숨김중',
+        quickActionText: '숨김',
+        quickActionAriaLabel: '회사/공고 숨김값 선택',
+        menuActionVerb: '숨김',
+        savedToast: '숨김 추가됨',
+        removedToast: '숨김 해제됨',
+        duplicateToast: '이미 숨김됨',
+        disabledSuffix: '숨김 꺼짐',
+        recentButtonAriaLabel: '최근 페이지 숨김값 관리',
+        recentPanelAriaLabel: '최근 페이지 숨김값',
+        recentPanelTitle: '최근 숨김',
+        recentPanelEmptyText: '최근 페이지 숨김 없음',
+        recentRemoveAriaLabel: '최근 숨김 해제',
+        recentManageText: '최근 숨김 관리'
+      };
+    }
+
+    return {
+      hiddenWriterLabel: '작성자',
+      hiddenTitleLabel: '제목',
+      activeStatus: '차단중',
+      quickActionText: '차단',
+      quickActionAriaLabel: '작성자 차단값 선택',
+      menuActionVerb: '차단',
+      savedToast: '작성자 차단 추가됨',
+      removedToast: '차단 해제됨',
+      duplicateToast: '이미 차단됨',
+      disabledSuffix: '차단 꺼짐',
+      recentButtonAriaLabel: '최근 페이지 차단값 관리',
+      recentPanelAriaLabel: '최근 페이지 차단값',
+      recentPanelTitle: '최근 차단',
+      recentPanelEmptyText: '최근 페이지 차단 없음',
+      recentRemoveAriaLabel: '최근 차단 해제',
+      recentManageText: '최근 차단 관리'
+    };
+  }
+
+  function getCurrentSiteDisabledText() {
+    return `${getCurrentSiteDisplayName()} ${getCurrentSiteCopy().disabledSuffix}`;
   }
 
   function loadRulesForCurrentSite() {
@@ -975,7 +1539,7 @@
       element &&
         element.closest &&
         element.closest(
-          `.${WRITER_ACTION_MENU_CLASS}, .${WRITER_ACTION_TOAST_CLASS}, .${REVEAL_CONTROL_CLASS}, .${RECENT_WRITER_PANEL_CLASS}`
+          `.${WRITER_ACTION_MENU_CLASS}, .${WRITER_ACTION_TOAST_CLASS}, .${REVEAL_CONTROL_CLASS}, .${RECENT_WRITER_PANEL_CLASS}, .${TEMPORARY_PICK_LABEL_CLASS}`
         )
     );
   }
@@ -1247,6 +1811,343 @@
     );
   }
 
+  function getHiddenRowsSummary(hiddenRows) {
+    return hiddenRows.reduce(
+      (summary, row) => {
+        const reason = row.getAttribute(HIDDEN_REASON_ATTRIBUTE);
+
+        if (reason === 'title-keyword') {
+          summary.titleRows += 1;
+        } else if (reason === 'writer') {
+          summary.writerRows += 1;
+        }
+
+        return summary;
+      },
+      {
+        titleRows: 0,
+        writerRows: 0
+      }
+    );
+  }
+
+  function formatHiddenRowsDetail(summary) {
+    const parts = [];
+    const siteCopy = getCurrentSiteCopy();
+
+    if (summary.writerRows > 0) {
+      parts.push(`${siteCopy.hiddenWriterLabel} ${summary.writerRows}`);
+    }
+
+    if (summary.titleRows > 0) {
+      parts.push(`${siteCopy.hiddenTitleLabel} ${summary.titleRows}`);
+    }
+
+    return parts.length > 0 ? parts.join(' / ') : '숨긴 항목 없음';
+  }
+
+  function getConnectedTemporaryHiddenEntries() {
+    temporaryHideState.hiddenEntries = temporaryHideState.hiddenEntries.filter(
+      (entry) =>
+        entry &&
+        entry.element &&
+        entry.element.isConnected &&
+        entry.element.getAttribute(TEMPORARY_HIDDEN_ATTRIBUTE) === 'true'
+    );
+
+    return temporaryHideState.hiddenEntries;
+  }
+
+  function getTemporaryHiddenCount() {
+    return getConnectedTemporaryHiddenEntries().length;
+  }
+
+  function getTemporaryPickLabel() {
+    return document.querySelector(`.${TEMPORARY_PICK_LABEL_CLASS}`);
+  }
+
+  function removeTemporaryPickLabel() {
+    const label = getTemporaryPickLabel();
+
+    if (label) {
+      label.remove();
+    }
+  }
+
+  function clearTemporaryHighlight() {
+    if (!temporaryHideState.highlightedElement) {
+      removeTemporaryPickLabel();
+      return;
+    }
+
+    temporaryHideState.highlightedElement.removeAttribute(
+      TEMPORARY_PICK_HIGHLIGHTED_ATTRIBUTE
+    );
+    temporaryHideState.highlightedElement = null;
+    removeTemporaryPickLabel();
+  }
+
+  function positionTemporaryPickLabel(target) {
+    if (!target || !target.isConnected) {
+      removeTemporaryPickLabel();
+      return;
+    }
+
+    let label = getTemporaryPickLabel();
+
+    if (!label) {
+      label = document.createElement('div');
+      label.className = TEMPORARY_PICK_LABEL_CLASS;
+      label.textContent = '클릭해 숨김';
+      document.body.append(label);
+    }
+
+    const rect = target.getBoundingClientRect();
+    const viewportWidth = globalThis.innerWidth || document.documentElement.clientWidth || 0;
+    const left = Math.max(8, Math.min(rect.left + 8, viewportWidth - 96));
+    const top = Math.max(8, rect.top + 8);
+
+    label.style.left = `${Math.round(left)}px`;
+    label.style.top = `${Math.round(top)}px`;
+  }
+
+  function setTemporaryHighlight(target) {
+    if (temporaryHideState.highlightedElement === target) {
+      positionTemporaryPickLabel(target);
+      return;
+    }
+
+    clearTemporaryHighlight();
+
+    if (!target) {
+      return;
+    }
+
+    temporaryHideState.highlightedElement = target;
+    target.setAttribute(TEMPORARY_PICK_HIGHLIGHTED_ATTRIBUTE, 'true');
+    positionTemporaryPickLabel(target);
+  }
+
+  function isForbiddenTemporaryHideTarget(element) {
+    if (!element || element.nodeType !== 1 || !element.isConnected) {
+      return true;
+    }
+
+    if (isBoardMuteOverlayElement(element)) {
+      return true;
+    }
+
+    const tagName = element.tagName ? element.tagName.toLowerCase() : '';
+
+    return [
+      'html',
+      'body',
+      'head',
+      'script',
+      'style',
+      'link',
+      'meta',
+      'iframe',
+      'object',
+      'embed'
+    ].includes(tagName);
+  }
+
+  function isOversizedTemporaryHideTarget(element) {
+    const rect = element.getBoundingClientRect();
+    const viewportWidth = globalThis.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight = globalThis.innerHeight || document.documentElement.clientHeight || 0;
+
+    if (rect.width <= 0 || rect.height <= 0) {
+      return true;
+    }
+
+    return (
+      rect.width >= viewportWidth * 0.94 &&
+      rect.height >= viewportHeight * 0.72
+    );
+  }
+
+  function getBlockLikeTemporaryHideCandidate(element) {
+    let candidate = element;
+
+    while (
+      candidate &&
+      candidate.parentElement &&
+      !isForbiddenTemporaryHideTarget(candidate)
+    ) {
+      const rect = candidate.getBoundingClientRect();
+      const computedDisplay =
+        typeof globalThis.getComputedStyle === 'function'
+          ? globalThis.getComputedStyle(candidate).display
+          : '';
+      const isSmallInline =
+        computedDisplay === 'inline' || rect.width < 24 || rect.height < 16;
+
+      if (!isSmallInline) {
+        return candidate;
+      }
+
+      candidate = candidate.parentElement;
+    }
+
+    return element;
+  }
+
+  function getTemporaryHideTarget(rawTarget) {
+    if (!rawTarget || rawTarget.nodeType !== 1) {
+      return null;
+    }
+
+    if (isForbiddenTemporaryHideTarget(rawTarget)) {
+      return null;
+    }
+
+    const supportedRow = rawTarget.closest(currentSiteAdapter.postRowSelector);
+
+    if (
+      supportedRow &&
+      isSupportedPostRow(supportedRow) &&
+      !supportedRow.hidden &&
+      supportedRow.getAttribute(TEMPORARY_HIDDEN_ATTRIBUTE) !== 'true'
+    ) {
+      return supportedRow;
+    }
+
+    const candidate = getBlockLikeTemporaryHideCandidate(rawTarget);
+
+    if (
+      isForbiddenTemporaryHideTarget(candidate) ||
+      candidate.hidden ||
+      candidate.getAttribute(TEMPORARY_HIDDEN_ATTRIBUTE) === 'true' ||
+      isOversizedTemporaryHideTarget(candidate)
+    ) {
+      return null;
+    }
+
+    return candidate;
+  }
+
+  function restoreTemporaryHiddenEntry(entry) {
+    if (!entry || !entry.element || !entry.element.isConnected) {
+      return;
+    }
+
+    entry.element.hidden = Boolean(entry.previousHidden);
+    restoreRowDisplayStyle(entry.element);
+    entry.element.removeAttribute(TEMPORARY_HIDDEN_ATTRIBUTE);
+  }
+
+  function restoreLastTemporaryHiddenElement(entry) {
+    restoreTemporaryHiddenEntry(entry);
+    temporaryHideState.hiddenEntries = temporaryHideState.hiddenEntries.filter(
+      (hiddenEntry) => hiddenEntry !== entry
+    );
+    updateRevealControl();
+  }
+
+  function restoreAllTemporaryHiddenElements() {
+    const viewportSnapshot = captureViewportSnapshot();
+
+    getConnectedTemporaryHiddenEntries().forEach(restoreTemporaryHiddenEntry);
+    temporaryHideState.hiddenEntries = [];
+    updateRevealControl();
+    restoreViewportSnapshot(viewportSnapshot);
+    showToast('임시 숨김 해제됨');
+  }
+
+  function hideElementTemporarily(element) {
+    if (!element || element.getAttribute(TEMPORARY_HIDDEN_ATTRIBUTE) === 'true') {
+      return null;
+    }
+
+    const entry = {
+      element,
+      previousHidden: Boolean(element.hidden)
+    };
+
+    saveRowDisplayStyle(element);
+    element.hidden = true;
+    element.style.setProperty('display', 'none', 'important');
+    element.setAttribute(TEMPORARY_HIDDEN_ATTRIBUTE, 'true');
+    temporaryHideState.hiddenEntries.push(entry);
+    updateRevealControl();
+    showToast('임시 숨김됨', {
+      label: '되돌리기',
+      onAction: () => {
+        restoreLastTemporaryHiddenElement(entry);
+      }
+    });
+
+    return entry;
+  }
+
+  function stopTemporaryHidePicking(options = {}) {
+    const { showCancelledToast = false } = options;
+
+    if (!temporaryHideState.isPicking) {
+      return;
+    }
+
+    temporaryHideState.isPicking = false;
+    clearTemporaryHighlight();
+    document.body.classList.remove(TEMPORARY_PICKING_BODY_CLASS);
+    document.removeEventListener('pointermove', handleTemporaryPickPointerMove, true);
+    document.removeEventListener('click', handleTemporaryPickClick, true);
+    updateRevealControl();
+
+    if (showCancelledToast) {
+      showToast('선택 취소됨');
+    }
+  }
+
+  function startTemporaryHidePicking() {
+    if (temporaryHideState.isPicking) {
+      stopTemporaryHidePicking({ showCancelledToast: true });
+      return;
+    }
+
+    closeWriterMenu();
+    closeRecentWriterPanel();
+    ensureRevealControlStyles();
+    temporaryHideState.isPicking = true;
+    document.body.classList.add(TEMPORARY_PICKING_BODY_CLASS);
+    document.addEventListener('pointermove', handleTemporaryPickPointerMove, true);
+    document.addEventListener('click', handleTemporaryPickClick, true);
+    updateRevealControl();
+    showToast('숨길 요소 선택 중');
+  }
+
+  function handleTemporaryPickPointerMove(event) {
+    if (!temporaryHideState.isPicking) {
+      return;
+    }
+
+    setTemporaryHighlight(getTemporaryHideTarget(event.target));
+  }
+
+  function handleTemporaryPickClick(event) {
+    if (!temporaryHideState.isPicking) {
+      return;
+    }
+
+    const target = getTemporaryHideTarget(event.target);
+
+    if (!target) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (typeof event.stopImmediatePropagation === 'function') {
+      event.stopImmediatePropagation();
+    }
+
+    stopTemporaryHidePicking();
+    hideElementTemporarily(target);
+  }
+
   function ensureRevealControlStyles() {
     if (document.getElementById(REVEAL_CONTROL_STYLE_ID)) {
       return;
@@ -1260,66 +2161,177 @@
         right: 16px;
         bottom: 72px;
         z-index: 2147483646;
-        display: inline-flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
-        justify-content: flex-end;
-        gap: 8px;
+        gap: 10px;
         box-sizing: border-box;
-        max-width: min(360px, calc(100vw - 32px));
-        padding: 7px 8px;
-        border: 1px solid #9c9c9c;
-        border-radius: 4px;
-        background: #fff;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
-        color: #222;
+        width: min(360px, calc(100vw - 32px));
+        padding: 10px;
+        border: 1px solid #cfe1da;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(20, 36, 31, 0.18);
+        color: #16231f;
         font-size: 12px;
         line-height: 1.4;
+        font-family: Arial, "Noto Sans KR", sans-serif;
+      }
+
+      .${REVEAL_CONTROL_CLASS}.is-revealed {
+        border-color: #ccd8f2;
+      }
+
+      .${REVEAL_CONTROL_CLASS}.is-picking {
+        border-color: #b9ddce;
+        box-shadow: 0 8px 24px rgba(15, 111, 85, 0.2);
+      }
+
+      .${REVEAL_CONTROL_STATUS_CLASS} {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 52px;
+        height: 24px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: #ddf4ec;
+        color: #0f6f55;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .${REVEAL_CONTROL_CLASS}.is-revealed .${REVEAL_CONTROL_STATUS_CLASS} {
+        background: #e7efff;
+        color: #2858a4;
+      }
+
+      .${REVEAL_CONTROL_CLASS}.is-picking .${REVEAL_CONTROL_STATUS_CLASS} {
+        background: #fff3cf;
+        color: #8a5a00;
+      }
+
+      .board-mute-reveal-control-copy {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
       }
 
       .${REVEAL_CONTROL_TEXT_CLASS} {
-        flex: 1 1 auto;
+        display: block;
         min-width: 0;
         overflow: hidden;
+        color: #16231f;
+        font-size: 13px;
+        font-weight: 700;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
+      .${REVEAL_CONTROL_DETAIL_CLASS} {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        color: #6d7975;
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .${REVEAL_CONTROL_ACTIONS_CLASS} {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        min-width: 0;
+        flex-wrap: wrap;
+      }
+
       .${REVEAL_CONTROL_BUTTON_CLASS} {
         flex: 0 0 auto;
-        padding: 3px 7px;
-        border: 1px solid #777;
-        border-radius: 3px;
-        background: #f7f7f7;
-        color: #222;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        min-width: 60px;
+        min-height: 28px;
+        padding: 4px 9px;
+        border: 1px solid #b8c8c2;
+        border-radius: 6px;
+        background: #f7faf9;
+        color: #1f3430;
         font: inherit;
+        font-weight: 700;
         cursor: pointer;
         white-space: nowrap;
       }
 
+      .${REVEAL_CONTROL_BUTTON_CLASS}:disabled {
+        cursor: default;
+        opacity: 0.65;
+      }
+
+      .${REVEAL_CONTROL_BUTTON_CLASS}[hidden] {
+        display: none;
+      }
+
       .${REVEAL_CONTROL_BUTTON_CLASS}:hover,
       .${REVEAL_CONTROL_BUTTON_CLASS}:focus {
-        background: #ececec;
+        border-color: #0f7a5f;
+        background: #edf8f4;
+        color: #0f6f55;
         outline: none;
+      }
+
+      body.${TEMPORARY_PICKING_BODY_CLASS},
+      body.${TEMPORARY_PICKING_BODY_CLASS} * {
+        cursor: crosshair !important;
+      }
+
+      [${TEMPORARY_PICK_HIGHLIGHTED_ATTRIBUTE}="true"] {
+        outline: 2px solid #0f7a5f !important;
+        outline-offset: 2px !important;
+        background-color: rgba(15, 122, 95, 0.08) !important;
+      }
+
+      .${TEMPORARY_PICK_LABEL_CLASS} {
+        position: fixed;
+        z-index: 2147483647;
+        box-sizing: border-box;
+        max-width: min(180px, calc(100vw - 16px));
+        padding: 5px 8px;
+        border: 1px solid #b9ddce;
+        border-radius: 999px;
+        background: #ffffff;
+        box-shadow: 0 6px 18px rgba(20, 36, 31, 0.18);
+        color: #0f6f55;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1.2;
+        font-family: Arial, "Noto Sans KR", sans-serif;
+        pointer-events: none;
+        white-space: nowrap;
       }
 
       .${RECENT_WRITER_PANEL_CLASS} {
         position: fixed;
         right: 16px;
-        bottom: 122px;
+        bottom: 132px;
         z-index: 2147483646;
-        width: min(320px, calc(100vw - 32px));
-        max-height: min(320px, calc(100vh - 144px));
+        width: min(340px, calc(100vw - 32px));
+        max-height: min(340px, calc(100vh - 154px));
         box-sizing: border-box;
         overflow: auto;
-        padding: 8px;
-        border: 1px solid #9c9c9c;
-        border-radius: 4px;
+        padding: 10px;
+        border: 1px solid #cfe1da;
+        border-radius: 8px;
         background: #fff;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
-        color: #222;
+        box-shadow: 0 10px 28px rgba(20, 36, 31, 0.2);
+        color: #16231f;
         font-size: 12px;
         line-height: 1.4;
+        font-family: Arial, "Noto Sans KR", sans-serif;
       }
 
       .${RECENT_WRITER_PANEL_HEADER_CLASS} {
@@ -1328,13 +2340,29 @@
         justify-content: space-between;
         gap: 8px;
         min-width: 0;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
+      }
+
+      .${RECENT_WRITER_PANEL_TITLE_CLASS} {
+        display: grid;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .${RECENT_WRITER_PANEL_TITLE_CLASS} strong {
+        color: #16231f;
+        font-size: 13px;
         font-weight: 700;
+      }
+
+      .${RECENT_WRITER_PANEL_COUNT_CLASS} {
+        color: #6d7975;
+        font-size: 11px;
       }
 
       .${RECENT_WRITER_PANEL_LIST_CLASS} {
         display: grid;
-        gap: 4px;
+        gap: 6px;
         margin: 0;
         padding: 0;
         list-style: none;
@@ -1344,26 +2372,36 @@
         display: grid;
         grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
+        min-width: 0;
+        min-height: 34px;
+        padding: 6px;
+        border: 1px solid #e0e8e4;
+        border-radius: 6px;
+        background: #fbfdfc;
       }
 
       .${RECENT_WRITER_PANEL_TYPE_CLASS} {
-        padding: 1px 5px;
-        border: 1px solid #d0d0d0;
-        border-radius: 3px;
-        background: #f5f5f5;
-        color: #444;
+        padding: 2px 6px;
+        border: 1px solid #cde1d9;
+        border-radius: 999px;
+        background: #edf8f4;
+        color: #0f6f55;
+        font-size: 11px;
+        font-weight: 700;
         white-space: nowrap;
       }
 
       .${RECENT_WRITER_PANEL_VALUE_CLASS} {
         overflow: hidden;
+        color: #243530;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
       .${RECENT_WRITER_PANEL_EMPTY_CLASS} {
-        color: #666;
+        padding: 8px 6px;
+        color: #6d7975;
       }
     `;
 
@@ -1419,11 +2457,7 @@
 
   function updateRevealControl() {
     const hiddenRows = getBoardMuteHiddenRows();
-
-    if (hiddenRows.length === 0) {
-      removeRevealControl();
-      return;
-    }
+    const temporaryHiddenCount = getTemporaryHiddenCount();
 
     ensureRevealControlStyles();
 
@@ -1434,38 +2468,136 @@
       control.className = REVEAL_CONTROL_CLASS;
       control.setAttribute('role', 'status');
 
+      const status = document.createElement('span');
+      status.className = REVEAL_CONTROL_STATUS_CLASS;
+      control.append(status);
+
+      const copy = document.createElement('span');
+      copy.className = 'board-mute-reveal-control-copy';
+
       const text = document.createElement('span');
       text.className = REVEAL_CONTROL_TEXT_CLASS;
-      control.append(text);
+      copy.append(text);
+
+      const detail = document.createElement('span');
+      detail.className = REVEAL_CONTROL_DETAIL_CLASS;
+      copy.append(detail);
+
+      control.append(copy);
+
+      const actions = document.createElement('span');
+      actions.className = REVEAL_CONTROL_ACTIONS_CLASS;
 
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = REVEAL_CONTROL_BUTTON_CLASS;
-      control.append(button);
+      button.className = `${REVEAL_CONTROL_BUTTON_CLASS} ${REVEAL_CONTROL_TOGGLE_BUTTON_CLASS}`;
+      actions.append(button);
 
       const recentButton = document.createElement('button');
       recentButton.type = 'button';
       recentButton.className = `${REVEAL_CONTROL_BUTTON_CLASS} ${REVEAL_CONTROL_RECENT_BUTTON_CLASS}`;
-      recentButton.textContent = '최근 차단';
-      recentButton.setAttribute('aria-label', '최근 페이지 차단값 관리');
+      recentButton.setAttribute('aria-label', getCurrentSiteCopy().recentButtonAriaLabel);
       recentButton.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
         toggleRecentWriterPanel();
       });
-      control.append(recentButton);
+      actions.append(recentButton);
+
+      const temporaryHideButton = document.createElement('button');
+      temporaryHideButton.type = 'button';
+      temporaryHideButton.className = `${REVEAL_CONTROL_BUTTON_CLASS} ${TEMPORARY_HIDE_BUTTON_CLASS}`;
+      temporaryHideButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        startTemporaryHidePicking();
+      });
+      actions.append(temporaryHideButton);
+
+      const temporaryRestoreButton = document.createElement('button');
+      temporaryRestoreButton.type = 'button';
+      temporaryRestoreButton.className = `${REVEAL_CONTROL_BUTTON_CLASS} ${TEMPORARY_RESTORE_BUTTON_CLASS}`;
+      temporaryRestoreButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        restoreAllTemporaryHiddenElements();
+      });
+      actions.append(temporaryRestoreButton);
+
+      control.append(actions);
 
       document.body.append(control);
     }
 
+    const status = control.querySelector(`.${REVEAL_CONTROL_STATUS_CLASS}`);
     const text = control.querySelector(`.${REVEAL_CONTROL_TEXT_CLASS}`);
-    const button = control.querySelector(`.${REVEAL_CONTROL_BUTTON_CLASS}`);
+    const detail = control.querySelector(`.${REVEAL_CONTROL_DETAIL_CLASS}`);
+    const button = control.querySelector(`.${REVEAL_CONTROL_TOGGLE_BUTTON_CLASS}`);
+    const recentButton = control.querySelector(`.${REVEAL_CONTROL_RECENT_BUTTON_CLASS}`);
+    const temporaryHideButton = control.querySelector(`.${TEMPORARY_HIDE_BUTTON_CLASS}`);
+    const temporaryRestoreButton = control.querySelector(`.${TEMPORARY_RESTORE_BUTTON_CLASS}`);
     const temporarilyShownRows = getTemporarilyShownRows();
+    const summary = getHiddenRowsSummary(hiddenRows);
     const isRevealed = temporarilyShownRows.length > 0;
+    const isPicking = temporaryHideState.isPicking;
 
-    text.textContent = isRevealed ? '숨김 글 표시 중' : `숨김 ${hiddenRows.length}개`;
-    button.textContent = isRevealed ? '다시 숨김' : '잠시 보기';
-    button.onclick = isRevealed ? hideTemporarilyShownRows : revealTemporarilyHiddenRows;
+    control.classList.toggle('is-revealed', isRevealed);
+    control.classList.toggle('is-picking', isPicking);
+
+    if (isPicking) {
+      status.textContent = '선택중';
+      text.textContent = '클릭해 숨김';
+      detail.textContent =
+        temporaryHiddenCount > 0
+          ? `임시 숨김 ${temporaryHiddenCount}개`
+          : '이번 페이지에서만 적용';
+    } else if (hiddenRows.length > 0) {
+      status.textContent = isRevealed ? '보기중' : getCurrentSiteCopy().activeStatus;
+      text.textContent = isRevealed
+        ? `${temporarilyShownRows.length}개 임시 표시`
+        : `숨김 ${hiddenRows.length}개`;
+      detail.textContent =
+        temporaryHiddenCount > 0
+          ? `${formatHiddenRowsDetail(summary)} / 임시 ${temporaryHiddenCount}`
+          : formatHiddenRowsDetail(summary);
+    } else if (temporaryHiddenCount > 0) {
+      status.textContent = '임시';
+      text.textContent = `임시 숨김 ${temporaryHiddenCount}개`;
+      detail.textContent = '새로고침하면 해제';
+    } else {
+      status.textContent = '대기중';
+      text.textContent = '직접 숨김';
+      detail.textContent = '이번 페이지에서만 숨김';
+    }
+
+    if (button) {
+      button.hidden = hiddenRows.length === 0;
+      button.textContent = isRevealed ? '다시 숨김' : '잠시 보기';
+      button.onclick = isRevealed ? hideTemporarilyShownRows : revealTemporarilyHiddenRows;
+    }
+
+    if (recentButton) {
+      recentButton.hidden = hiddenRows.length === 0;
+      recentButton.textContent = '관리';
+
+      if (hiddenRows.length === 0) {
+        closeRecentWriterPanel();
+      }
+    }
+
+    if (temporaryHideButton) {
+      temporaryHideButton.textContent = isPicking ? '취소' : '선택 숨김';
+      temporaryHideButton.setAttribute(
+        'aria-label',
+        isPicking ? '선택 숨김 취소' : '숨길 요소 선택'
+      );
+    }
+
+    if (temporaryRestoreButton) {
+      temporaryRestoreButton.hidden = temporaryHiddenCount === 0;
+      temporaryRestoreButton.textContent = '되돌리기';
+      temporaryRestoreButton.setAttribute('aria-label', '임시 숨김 모두 되돌리기');
+    }
   }
 
   function ensureWriterActionStyles() {
@@ -1479,29 +2611,31 @@
       [${WRITER_ACTION_CONTAINER_ATTRIBUTE}="true"] > .${WRITER_ACTION_BUTTON_CLASS} {
         position: absolute;
         top: 50%;
-        right: 2px;
+        right: 4px;
         z-index: 2;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         box-sizing: border-box;
-        width: 32px;
-        min-width: 32px;
-        height: 18px;
+        width: auto;
+        min-width: 38px;
+        height: 22px;
         transform: translateY(-50%);
-        padding: 0 4px;
-        border: 1px solid #b8b8b8;
-        border-radius: 3px;
-        background: #fff;
-        color: #333;
+        padding: 0 8px;
+        border: 1px solid #b8d7ce;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 2px 8px rgba(18, 40, 34, 0.14);
+        color: #0f6f55;
         appearance: none;
         font-family: inherit;
         font-size: 11px;
-        line-height: 16px;
+        font-weight: 700;
+        line-height: 20px;
         white-space: nowrap;
         cursor: pointer;
         opacity: 0;
-        transition: opacity 80ms ease;
+        transition: opacity 90ms ease, border-color 90ms ease, background 90ms ease;
         contain: layout paint style;
       }
 
@@ -1512,34 +2646,39 @@
 
       .${WRITER_ACTION_BUTTON_CLASS}:focus {
         opacity: 1;
-        outline: 1px solid #555;
+        border-color: #0f7a5f;
+        background: #edf8f4;
+        outline: 2px solid rgba(15, 122, 95, 0.22);
         outline-offset: 1px;
       }
 
       .${WRITER_ACTION_BUTTON_CLASS}[data-board-mute-site="clien"] {
-        right: 6px;
+        right: 8px;
       }
 
       .${WRITER_ACTION_MENU_CLASS} {
         position: fixed;
         z-index: 2147483647;
-        min-width: 150px;
-        max-width: min(320px, calc(100vw - 16px));
-        padding: 4px;
-        border: 1px solid #9c9c9c;
-        border-radius: 4px;
+        min-width: 176px;
+        max-width: min(340px, calc(100vw - 16px));
+        padding: 6px;
+        border: 1px solid #cfe1da;
+        border-radius: 8px;
         background: #fff;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
-        color: #222;
+        box-shadow: 0 10px 28px rgba(20, 36, 31, 0.2);
+        color: #16231f;
         font-size: 12px;
         line-height: 1.4;
+        font-family: Arial, "Noto Sans KR", sans-serif;
       }
 
       .${WRITER_ACTION_MENU_CLASS} button {
         display: block;
         width: 100%;
-        padding: 5px 7px;
+        min-height: 30px;
+        padding: 6px 8px;
         border: 0;
+        border-radius: 6px;
         background: transparent;
         color: inherit;
         font: inherit;
@@ -1551,13 +2690,14 @@
 
       .${WRITER_ACTION_MENU_CLASS} button:hover,
       .${WRITER_ACTION_MENU_CLASS} button:focus {
-        background: #efefef;
+        background: #edf8f4;
+        color: #0f6f55;
         outline: none;
       }
 
       .${WRITER_ACTION_MENU_CLASS} .board-mute-menu-scope {
-        margin: 4px 7px 2px;
-        color: #666;
+        margin: 6px 8px 2px;
+        color: #6d7975;
         font-size: 11px;
         white-space: nowrap;
       }
@@ -1573,13 +2713,15 @@
         gap: 8px;
         box-sizing: border-box;
         max-width: min(360px, calc(100vw - 32px));
-        padding: 8px 10px;
-        border: 1px solid #444;
-        border-radius: 4px;
-        background: #222;
+        padding: 9px 11px;
+        border: 1px solid #17312b;
+        border-radius: 8px;
+        background: #17231f;
         color: #fff;
         font-size: 12px;
         line-height: 1.4;
+        box-shadow: 0 8px 24px rgba(20, 36, 31, 0.22);
+        font-family: Arial, "Noto Sans KR", sans-serif;
       }
 
       .${WRITER_ACTION_TOAST_TEXT_CLASS} {
@@ -1590,12 +2732,14 @@
 
       .${WRITER_ACTION_TOAST_ACTION_CLASS} {
         flex: 0 0 auto;
-        padding: 2px 6px;
+        min-height: 26px;
+        padding: 3px 8px;
         border: 1px solid rgba(255, 255, 255, 0.62);
-        border-radius: 3px;
+        border-radius: 6px;
         background: transparent;
         color: #fff;
         font: inherit;
+        font-weight: 700;
         cursor: pointer;
         white-space: nowrap;
       }
@@ -1669,12 +2813,18 @@
   function positionWriterMenu(menu, anchorButton) {
     const rect = anchorButton.getBoundingClientRect();
     const viewportWidth = globalThis.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight = globalThis.innerHeight || document.documentElement.clientHeight || 0;
     const menuWidth = menu.getBoundingClientRect().width || 180;
+    const menuHeight = menu.getBoundingClientRect().height || 160;
     const left = viewportWidth
       ? Math.max(8, Math.min(rect.left, viewportWidth - menuWidth - 8))
       : rect.left;
+    const topCandidate = rect.bottom + 6;
+    const top = viewportHeight
+      ? Math.max(8, Math.min(topCandidate, viewportHeight - menuHeight - 8))
+      : topCandidate;
 
-    menu.style.top = `${Math.round(rect.bottom + 4)}px`;
+    menu.style.top = `${Math.round(top)}px`;
     menu.style.left = `${Math.round(left)}px`;
   }
 
@@ -1803,7 +2953,7 @@
 
             setActiveRules(nextRules);
             applyActiveRules('writer-undo');
-            showToast('차단 해제됨');
+            showToast(getCurrentSiteCopy().removedToast);
             restoreViewportSnapshot(viewportSnapshot);
             console.info('Board Mute: writer quick add undone', {
               type: candidate.type,
@@ -1824,7 +2974,7 @@
   function showWriterSavedToast(candidate) {
     const writerValue = candidate.value.trim();
 
-    showToast('작성자 차단 추가됨', {
+    showToast(getCurrentSiteCopy().savedToast, {
       label: '되돌리기',
       onClick: () =>
         undoWriterCandidate({
@@ -1854,16 +3004,27 @@
   }
 
   function createRecentWriterPanel(entries) {
+    const siteCopy = getCurrentSiteCopy();
     const panel = document.createElement('div');
     panel.className = RECENT_WRITER_PANEL_CLASS;
     panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', '최근 페이지 차단값');
+    panel.setAttribute('aria-label', siteCopy.recentPanelAriaLabel);
 
     const header = document.createElement('div');
     header.className = RECENT_WRITER_PANEL_HEADER_CLASS;
 
     const title = document.createElement('span');
-    title.textContent = '최근 차단';
+    title.className = RECENT_WRITER_PANEL_TITLE_CLASS;
+
+    const titleText = document.createElement('strong');
+    titleText.textContent = siteCopy.recentPanelTitle;
+    title.append(titleText);
+
+    const countText = document.createElement('span');
+    countText.className = RECENT_WRITER_PANEL_COUNT_CLASS;
+    countText.textContent = entries.length > 0 ? `${entries.length}개 저장됨` : '페이지에서 추가한 값 없음';
+    title.append(countText);
+
     header.append(title);
 
     const closeButton = document.createElement('button');
@@ -1884,7 +3045,7 @@
     if (entries.length === 0) {
       const emptyItem = document.createElement('li');
       emptyItem.className = RECENT_WRITER_PANEL_EMPTY_CLASS;
-      emptyItem.textContent = '최근 차단 없음';
+      emptyItem.textContent = siteCopy.recentPanelEmptyText;
       list.append(emptyItem);
     }
 
@@ -1906,12 +3067,22 @@
       removeButton.type = 'button';
       removeButton.className = REVEAL_CONTROL_BUTTON_CLASS;
       removeButton.textContent = '해제';
-      removeButton.setAttribute('aria-label', `최근 차단 해제: ${entry.value}`);
+      removeButton.setAttribute('aria-label', `${siteCopy.recentRemoveAriaLabel}: ${entry.value}`);
       removeButton.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
-        closeRecentWriterPanel();
-        undoWriterCandidate(entry);
+        removeButton.disabled = true;
+        removeButton.textContent = '해제 중';
+
+        undoWriterCandidate(entry).then((result) => {
+          if (result.removed || result.reason === 'not-found') {
+            closeRecentWriterPanel();
+            return;
+          }
+
+          removeButton.disabled = false;
+          removeButton.textContent = '해제';
+        });
       });
       item.append(removeButton);
 
@@ -1997,7 +3168,7 @@
         if (siteRules.enabled === false) {
           setActiveRules(rulesResult.rules);
           restoreOptimisticallyHiddenRows(optimisticResult);
-          showToast(`${getCurrentSiteDisplayName()} 차단 꺼짐`);
+          showToast(getCurrentSiteDisabledText());
           return { saved: false, reason: 'site-disabled' };
         }
 
@@ -2017,7 +3188,7 @@
                 setActiveRules(nextRules);
                 updateRevealControl();
                 clearOptimisticallyHiddenRows(optimisticResult);
-                showToast('이미 차단됨');
+                showToast(getCurrentSiteCopy().duplicateToast);
                 console.info('Board Mute: writer quick add metadata saved', {
                   type: candidate.type,
                   value: writerValue,
@@ -2032,7 +3203,7 @@
           setActiveRules(rulesResult.rules);
           updateRevealControl();
           clearOptimisticallyHiddenRows(optimisticResult);
-          showToast('이미 차단됨');
+          showToast(getCurrentSiteCopy().duplicateToast);
           console.info('Board Mute: writer quick add skipped', {
             type: candidate.type,
             value: writerValue,
@@ -2087,6 +3258,7 @@
       return;
     }
 
+    const siteCopy = getCurrentSiteCopy();
     const menu = document.createElement('div');
     menu.className = WRITER_ACTION_MENU_CLASS;
     menu.setAttribute('role', 'menu');
@@ -2094,7 +3266,7 @@
     candidates.forEach((candidate) => {
       const menuItem = document.createElement('button');
       menuItem.type = 'button';
-      menuItem.textContent = `${candidate.label} 차단: ${candidate.value}`;
+      menuItem.textContent = `${candidate.label} ${siteCopy.menuActionVerb}: ${candidate.value}`;
       menuItem.setAttribute('role', 'menuitem');
       menuItem.addEventListener('click', (event) => {
         event.preventDefault();
@@ -2110,7 +3282,7 @@
 
     const recentButton = document.createElement('button');
     recentButton.type = 'button';
-    recentButton.textContent = '최근 차단 관리';
+    recentButton.textContent = siteCopy.recentManageText;
     recentButton.setAttribute('role', 'menuitem');
     recentButton.addEventListener('click', (event) => {
       event.preventDefault();
@@ -2197,8 +3369,8 @@
       button.type = 'button';
       button.className = WRITER_ACTION_BUTTON_CLASS;
       button.dataset.boardMuteSite = getCurrentSiteId();
-      button.textContent = '차단';
-      button.setAttribute('aria-label', '작성자 차단값 선택');
+      button.textContent = getCurrentSiteCopy().quickActionText;
+      button.setAttribute('aria-label', getCurrentSiteCopy().quickActionAriaLabel);
       button.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -2379,6 +3551,7 @@
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
+      stopTemporaryHidePicking({ showCancelledToast: temporaryHideState.isPicking });
       closeWriterMenu();
       closeRecentWriterPanel();
     }
