@@ -2,15 +2,19 @@
 
 Board Mute는 Chrome extension manifest의 숫자형 `version` 값을 기준으로 릴리스를 구분합니다.
 
-현재 소스 버전은 `0.4.0`입니다.
+현재 소스 버전은 `0.5.0`입니다.
 
-마지막으로 패키징까지 검증한 제출 후보는 `0.4.0`입니다.
+마지막으로 패키징까지 검증한 제출 후보는 `0.5.0`입니다.
 
-- ZIP: `dist/board-mute-0.4.0.zip`
-- SHA-256: `EB4F1149CB3B261EDF1BB1403DE5C2F382455516DC098049C580865C12CF8D6E`
-- 파일 크기: `40,022` bytes
+- ZIP: `dist/board-mute-0.5.0.zip`
+- SHA-256: `61B2E552AFF44B949FBEA43ABE3CD5C33A50E05EE3EDD702803276FB7C443106`
+- 파일 크기: `42,184` bytes
 
-`0.4.0`은 사람인 정식 지원과 사람인 content script match를 포함한 첫 제출 후보 package입니다. 기존 `dist/board-mute-0.3.0.zip`은 사람인 정식 지원 추가 전 package이므로 사람인 포함 제출 후보로 사용하지 않습니다.
+`0.5.0`은 사람인 포함 `0.4.0` 이후 잡코리아 PC 채용 목록, 인벤 PC 게시판 목록, 네이트판 PC 톡톡 목록 지원과 각 content script match를 포함한 12개 사이트 기준 제출 후보 package입니다.
+
+기존 `dist/board-mute-0.4.0.zip`은 사람인까지 포함한 마지막 제출 후보였으므로 잡코리아, 인벤, 네이트판 포함 제출 후보로 사용하지 않습니다.
+
+`0.5.0` public repository export/precheck, 커밋, push, Chrome Web Store 제출은 아직 진행하지 않았습니다.
 
 ## 기본 원칙
 

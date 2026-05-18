@@ -11,7 +11,10 @@
   const TODAYHUMOR_SITE_ID = 'todayhumor';
   const QUASARZONE_SITE_ID = 'quasarzone';
   const SLRCLUB_SITE_ID = 'slrclub';
+  const INVEN_SITE_ID = 'inven';
+  const NATEPANN_SITE_ID = 'natepann';
   const SARAMIN_SITE_ID = 'saramin';
+  const JOBKOREA_SITE_ID = 'jobkorea';
   const DEFAULT_RULES = {
     titleKeywords: ['막글', '나는내향적', '로또'],
     writerValues: ['야갤', '손발이시립디다', 'stool3653']
@@ -379,6 +382,20 @@
       }
 
       if (
+        parsedUrl.hostname === 'www.inven.co.kr' &&
+        parsedUrl.pathname.startsWith('/board/')
+      ) {
+        return INVEN_SITE_ID;
+      }
+
+      if (
+        parsedUrl.hostname === 'pann.nate.com' &&
+        parsedUrl.pathname.startsWith('/talk/')
+      ) {
+        return NATEPANN_SITE_ID;
+      }
+
+      if (
         parsedUrl.hostname === 'www.saramin.co.kr' &&
         (
           parsedUrl.pathname === '/zf_user/search' ||
@@ -386,6 +403,13 @@
         )
       ) {
         return SARAMIN_SITE_ID;
+      }
+
+      if (
+        parsedUrl.hostname === 'www.jobkorea.co.kr' &&
+        parsedUrl.pathname === '/recruit/joblist'
+      ) {
+        return JOBKOREA_SITE_ID;
       }
     } catch (error) {
       return null;
@@ -529,7 +553,10 @@
     TODAYHUMOR_SITE_ID,
     QUASARZONE_SITE_ID,
     SLRCLUB_SITE_ID,
+    INVEN_SITE_ID,
+    NATEPANN_SITE_ID,
     SARAMIN_SITE_ID,
+    JOBKOREA_SITE_ID,
     getDefaultRulesDocument,
     getSiteIdFromUrl,
     getSiteRules,

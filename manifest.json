@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Board Mute",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Hide unwanted rows on supported Korean community and job lists using local rules.",
   "icons": {
     "16": "assets/icons/icon-16.png",
@@ -35,8 +35,11 @@
         "https://www.todayhumor.co.kr/board/view.php*",
         "https://quasarzone.com/bbs/*",
         "https://www.slrclub.com/bbs/zboard.php*",
+        "https://www.inven.co.kr/board/*",
+        "https://pann.nate.com/talk/*",
         "https://www.saramin.co.kr/zf_user/search*",
-        "https://www.saramin.co.kr/zf_user/jobs/list/job-category*"
+        "https://www.saramin.co.kr/zf_user/jobs/list/job-category*",
+        "https://www.jobkorea.co.kr/recruit/joblist*"
       ],
       "js": [
         "src/shared/rulesStore.js",

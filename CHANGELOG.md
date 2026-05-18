@@ -4,6 +4,21 @@ Board Mute의 공개 릴리스 변경 사항을 기록합니다.
 
 ## Unreleased
 
+## 0.5.0 - 2026-05-18
+
+### Added
+
+- 잡코리아 PC 채용 목록 row 숨김 지원을 추가했습니다.
+- 잡코리아 회사 ID `company:<token>`, 회사명 fallback, 특정 공고 `gno:<gno>` 숨김값을 빠른 메뉴에서 추가할 수 있게 했습니다.
+- 잡코리아에서는 popup과 페이지 UI가 사람인과 같은 `회사/공고 숨김`, `공고/조건 키워드`, `최근 숨김` 문구를 사용하도록 했습니다.
+- 잡코리아 채용 목록 대표 URL을 검증하는 `scripts/check-jobkorea.js`를 추가했습니다.
+- 인벤 PC 게시판 목록 row 숨김 지원을 추가했습니다.
+- 인벤 글쓴이 닉네임 fallback과 특정 글 `post:<boardId>/<postId>` 숨김값을 빠른 메뉴에서 추가할 수 있게 했습니다.
+- 인벤 대표 게시판 URL을 검증하는 `scripts/check-inven.js`를 추가했습니다.
+- 네이트판 PC 톡톡 목록 row 숨김 지원을 추가했습니다.
+- 네이트판 작성자 검색값 fallback과 특정 글 `post:<postId>` 숨김값을 빠른 메뉴에서 추가할 수 있게 했습니다.
+- 네이트판 대표 톡톡 목록 URL을 검증하는 `scripts/check-natepann.js`를 추가했습니다.
+
 ## 0.4.0 - 2026-05-18
 
 ### Added

@@ -76,6 +76,24 @@
       toggleHeading: 'SLR클럽 차단',
       toggleAriaLabel: 'SLR클럽 차단 켜기'
     },
+    inven: {
+      siteId: 'inven',
+      displayName: '인벤',
+      optionLabel: '인벤',
+      hostLabel: 'www.inven.co.kr/board',
+      titleSummaryLabel: '인벤 제목',
+      toggleHeading: '인벤 차단',
+      toggleAriaLabel: '인벤 차단 켜기'
+    },
+    natepann: {
+      siteId: 'natepann',
+      displayName: '네이트판',
+      optionLabel: '네이트판',
+      hostLabel: 'pann.nate.com/talk',
+      titleSummaryLabel: '판 제목',
+      toggleHeading: '네이트판 차단',
+      toggleAriaLabel: '네이트판 차단 켜기'
+    },
     saramin: {
       siteId: 'saramin',
       displayName: '사람인',
@@ -103,6 +121,34 @@
       toggleAriaLabel: '사람인 숨김 켜기',
       disabledText: '사람인 숨김 꺼짐',
       enabledText: '사람인 숨김 켜짐'
+    },
+    jobkorea: {
+      siteId: 'jobkorea',
+      displayName: '잡코리아',
+      optionLabel: '잡코리아',
+      hostLabel: 'www.jobkorea.co.kr/recruit/joblist',
+      titleSummaryLabel: '공고/조건',
+      writerSummaryLabel: '회사/공고',
+      titleSectionTitle: '공고/조건 키워드',
+      titleInputAriaLabel: '공고/조건 키워드',
+      titleRemoveLabel: '공고/조건 키워드 삭제',
+      writerSectionTitle: '회사/공고 숨김값',
+      writerInputAriaLabel: '회사 ID, 회사명, 공고 ID 값',
+      writerTypeAriaLabel: '회사/공고 숨김값 분류',
+      writerRemoveLabel: '회사/공고 숨김값 삭제',
+      writerFilterAriaLabel: '회사/공고 숨김값 필터',
+      writerSourceFilterAriaLabel: '회사/공고 숨김값 출처 필터',
+      writerSearchAriaLabel: '회사/공고 숨김값 검색',
+      writerTypeLabels: {
+        uid: '회사ID',
+        nick: '회사명',
+        unknown: '공고/기타'
+      },
+      hiddenWriterTypes: ['ip'],
+      toggleHeading: '잡코리아 숨김',
+      toggleAriaLabel: '잡코리아 숨김 켜기',
+      disabledText: '잡코리아 숨김 꺼짐',
+      enabledText: '잡코리아 숨김 켜짐'
     }
   };
   const DEFAULT_RULES = {

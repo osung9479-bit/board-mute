@@ -97,6 +97,17 @@
   const SLRCLUB_TITLE_LINK_SELECTOR = 'td.sbj a[href*="/bbs/vx2.php"][href*="id="][href*="no="]';
   const SLRCLUB_WRITER_CELL_SELECTOR = 'td.list_name';
   const SLRCLUB_WRITER_ID_SELECTOR = 'span.lop[data-xuid]';
+  const INVEN_POST_ROW_SELECTOR = 'tr.lgtm';
+  const INVEN_TITLE_CELL_SELECTOR = 'td.tit';
+  const INVEN_TITLE_LINK_SELECTOR = 'td.tit a.subject-link[href*="/board/"]';
+  const INVEN_WRITER_CELL_SELECTOR = 'td.user';
+  const INVEN_WRITER_NICK_SELECTOR = '.layerNickName';
+  const INVEN_POST_ID_PREFIX = 'post:';
+  const NATEPANN_POST_ROW_SELECTOR = 'tr';
+  const NATEPANN_TITLE_LINK_SELECTOR = 'td.subject a[href*="/talk/"]';
+  const NATEPANN_WRITER_CELL_SELECTOR = 'td.writer';
+  const NATEPANN_WRITER_LINK_SELECTOR = 'td.writer a[href*="/search/talk"]';
+  const NATEPANN_POST_ID_PREFIX = 'post:';
   const SARAMIN_SEARCH_ROW_SELECTOR = '.item_recruit[value]';
   const SARAMIN_CATEGORY_ROW_SELECTOR = '.box_item, .list_item[id^="rec-"]';
   const SARAMIN_POST_ROW_SELECTOR = `${SARAMIN_SEARCH_ROW_SELECTOR}, ${SARAMIN_CATEGORY_ROW_SELECTOR}`;
@@ -110,6 +121,12 @@
     '.col.company_nm a.str_tit[href*="csn="]';
   const SARAMIN_COMPANY_ID_PREFIX = 'csn:';
   const SARAMIN_RECRUIT_ID_PREFIX = 'rec:';
+  const JOBKOREA_POST_ROW_SELECTOR = 'tr.devloopArea';
+  const JOBKOREA_TITLE_LINK_SELECTOR = '.tplTit a[href*="/Recruit/GI_Read/"]';
+  const JOBKOREA_COMPANY_CELL_SELECTOR = 'td.tplCo';
+  const JOBKOREA_COMPANY_LINK_SELECTOR = 'td.tplCo a[href*="/Recruit/Co_Read/C/"]';
+  const JOBKOREA_COMPANY_ID_PREFIX = 'company:';
+  const JOBKOREA_RECRUIT_ID_PREFIX = 'gno:';
   const WRITER_TYPE_LABELS = {
     uid: '아이디',
     ip: 'IP',
@@ -1100,6 +1117,382 @@
     }
   };
 
+  function getInvenTitleLink(row) {
+    return (
+      row.querySelector(INVEN_TITLE_LINK_SELECTOR) ||
+      row.querySelector('a.subject-link[href*="/board/"]')
+    );
+  }
+
+  function getInvenPathPartsFromElement(element) {
+    const href = element ? element.getAttribute('href') || '' : '';
+
+    if (!href) {
+      return null;
+    }
+
+    try {
+      const parts = new URL(href, getCurrentUrl()).pathname
+        .split('/')
+        .filter(Boolean);
+
+      if (parts.length < 4 || parts[0] !== 'board') {
+        return null;
+      }
+
+      return {
+        boardId: parts[2] || '',
+        postId: parts[3] || ''
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function getInvenWriterCell(row) {
+    return row.querySelector(INVEN_WRITER_CELL_SELECTOR);
+  }
+
+  function getInvenWriterDisplayName(writerCell) {
+    const writerElement = writerCell
+      ? writerCell.querySelector(INVEN_WRITER_NICK_SELECTOR)
+      : null;
+
+    if (writerElement) {
+      return (writerElement.textContent || '').trim();
+    }
+
+    if (!writerCell) {
+      return '';
+    }
+
+    const clonedElement = writerCell.cloneNode(true);
+
+    clonedElement
+      .querySelectorAll(`.${WRITER_ACTION_BUTTON_CLASS}, img`)
+      .forEach((element) => element.remove());
+
+    return (clonedElement.textContent || '').trim();
+  }
+
+  function getInvenBoardId(row) {
+    const commentElement = row.querySelector('[data-opinion-bbs-comeidx]');
+    const commentBoardId = commentElement
+      ? (commentElement.getAttribute('data-opinion-bbs-comeidx') || '').trim()
+      : '';
+
+    if (commentBoardId) {
+      return commentBoardId;
+    }
+
+    const linkParts = getInvenPathPartsFromElement(getInvenTitleLink(row));
+
+    return linkParts ? linkParts.boardId.trim() : '';
+  }
+
+  function getInvenPostId(row) {
+    const commentElement = row.querySelector('[data-opinion-bbs-uid]');
+    const commentPostId = commentElement
+      ? (commentElement.getAttribute('data-opinion-bbs-uid') || '').trim()
+      : '';
+
+    if (commentPostId) {
+      return commentPostId;
+    }
+
+    const linkParts = getInvenPathPartsFromElement(getInvenTitleLink(row));
+
+    return linkParts ? linkParts.postId.trim() : '';
+  }
+
+  function getInvenPostValue(row) {
+    const boardId = getInvenBoardId(row);
+    const postId = getInvenPostId(row);
+
+    return boardId && postId ? `${INVEN_POST_ID_PREFIX}${boardId}/${postId}` : '';
+  }
+
+  const invenAdapter = {
+    siteId: 'inven',
+    displayName: '인벤',
+    postRowSelector: INVEN_POST_ROW_SELECTOR,
+    writerCellSelector: INVEN_WRITER_CELL_SELECTOR,
+
+    matchesUrl(url) {
+      try {
+        const parsedUrl = new URL(url);
+
+        return (
+          parsedUrl.hostname === 'www.inven.co.kr' &&
+          parsedUrl.pathname.startsWith('/board/')
+        );
+      } catch (error) {
+        return false;
+      }
+    },
+
+    isSupportedPostRow(row) {
+      if (!row.matches(this.postRowSelector)) {
+        return false;
+      }
+
+      const writerCell = getInvenWriterCell(row);
+
+      return Boolean(
+        getInvenTitleLink(row) &&
+        writerCell &&
+        getInvenWriterDisplayName(writerCell) &&
+        getInvenPostValue(row)
+      );
+    },
+
+    getPostRows(root) {
+      return Array.from(root.querySelectorAll(this.postRowSelector)).filter((row) =>
+        this.isSupportedPostRow(row)
+      );
+    },
+
+    containsPostRows(node) {
+      if (!node || node.nodeType !== 1) {
+        return false;
+      }
+
+      if (node.matches(this.postRowSelector) && this.isSupportedPostRow(node)) {
+        return true;
+      }
+
+      return this.getPostRows(node).length > 0;
+    },
+
+    getTitleText(row) {
+      const titleLink = getInvenTitleLink(row);
+
+      return titleLink ? (titleLink.textContent || '').trim() : '';
+    },
+
+    getWriterCell(row) {
+      return getInvenWriterCell(row);
+    },
+
+    getWriterValues(row) {
+      const writerCell = getInvenWriterCell(row);
+
+      return getUniqueTrimmedValues([
+        getInvenWriterDisplayName(writerCell),
+        getInvenPostValue(row)
+      ]);
+    },
+
+    getWriterCandidates(writerCell) {
+      const row = writerCell.closest(INVEN_POST_ROW_SELECTOR);
+
+      if (!row) {
+        return [];
+      }
+
+      const displayName = getInvenWriterDisplayName(writerCell);
+      const postValue = getInvenPostValue(row);
+      const candidates = [];
+
+      if (displayName) {
+        candidates.push({
+          type: 'nick',
+          label: '닉네임(주의)',
+          value: displayName
+        });
+      }
+
+      if (postValue) {
+        candidates.push({
+          type: 'unknown',
+          label: '글',
+          value: postValue
+        });
+      }
+
+      return candidates;
+    }
+  };
+
+  function getNatepannTitleLink(row) {
+    return row.querySelector(NATEPANN_TITLE_LINK_SELECTOR);
+  }
+
+  function getNatepannWriterCell(row) {
+    return row.querySelector(NATEPANN_WRITER_CELL_SELECTOR);
+  }
+
+  function getNatepannWriterLink(rowOrCell) {
+    if (!rowOrCell) {
+      return null;
+    }
+
+    if (rowOrCell.matches(NATEPANN_WRITER_CELL_SELECTOR)) {
+      return rowOrCell.querySelector('a[href*="/search/talk"]');
+    }
+
+    return rowOrCell.querySelector(NATEPANN_WRITER_LINK_SELECTOR);
+  }
+
+  function getNatepannUrlFromElement(element) {
+    const href = element ? element.getAttribute('href') || '' : '';
+
+    if (!href) {
+      return null;
+    }
+
+    try {
+      return new URL(href, getCurrentUrl());
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function getNatepannWriterSearchValue(rowOrCell) {
+    const writerUrl = getNatepannUrlFromElement(getNatepannWriterLink(rowOrCell));
+    const searchValue = writerUrl ? writerUrl.searchParams.get('q') || '' : '';
+
+    return searchValue.trim();
+  }
+
+  function getNatepannWriterDisplayName(writerCell) {
+    if (!writerCell) {
+      return '';
+    }
+
+    const clonedElement = writerCell.cloneNode(true);
+
+    clonedElement
+      .querySelectorAll(`.${WRITER_ACTION_BUTTON_CLASS}, img`)
+      .forEach((element) => element.remove());
+
+    return (clonedElement.textContent || '').trim();
+  }
+
+  function getNatepannPostId(row) {
+    const titleUrl = getNatepannUrlFromElement(getNatepannTitleLink(row));
+
+    if (!titleUrl) {
+      return '';
+    }
+
+    const pathParts = titleUrl.pathname.split('/').filter(Boolean);
+    const postId = pathParts[0] === 'talk' ? pathParts[1] || '' : '';
+
+    return /^\d+$/.test(postId) ? postId : '';
+  }
+
+  function getNatepannPostValue(row) {
+    const postId = getNatepannPostId(row);
+
+    return postId ? `${NATEPANN_POST_ID_PREFIX}${postId}` : '';
+  }
+
+  const natepannAdapter = {
+    siteId: 'natepann',
+    displayName: '네이트판',
+    postRowSelector: NATEPANN_POST_ROW_SELECTOR,
+    writerCellSelector: NATEPANN_WRITER_CELL_SELECTOR,
+
+    matchesUrl(url) {
+      try {
+        const parsedUrl = new URL(url);
+
+        return (
+          parsedUrl.hostname === 'pann.nate.com' &&
+          parsedUrl.pathname.startsWith('/talk/')
+        );
+      } catch (error) {
+        return false;
+      }
+    },
+
+    isSupportedPostRow(row) {
+      if (!row.matches(this.postRowSelector)) {
+        return false;
+      }
+
+      const writerCell = getNatepannWriterCell(row);
+
+      return Boolean(
+        getNatepannTitleLink(row) &&
+        writerCell &&
+        getNatepannPostValue(row) &&
+        (getNatepannWriterSearchValue(writerCell) ||
+          getNatepannWriterDisplayName(writerCell))
+      );
+    },
+
+    getPostRows(root) {
+      return Array.from(root.querySelectorAll(this.postRowSelector)).filter((row) =>
+        this.isSupportedPostRow(row)
+      );
+    },
+
+    containsPostRows(node) {
+      if (!node || node.nodeType !== 1) {
+        return false;
+      }
+
+      if (node.matches(this.postRowSelector) && this.isSupportedPostRow(node)) {
+        return true;
+      }
+
+      return this.getPostRows(node).length > 0;
+    },
+
+    getTitleText(row) {
+      const titleLink = getNatepannTitleLink(row);
+
+      return titleLink ? (titleLink.textContent || '').trim() : '';
+    },
+
+    getWriterCell(row) {
+      return getNatepannWriterCell(row);
+    },
+
+    getWriterValues(row) {
+      const writerCell = getNatepannWriterCell(row);
+
+      return getUniqueTrimmedValues([
+        getNatepannWriterSearchValue(writerCell),
+        getNatepannWriterDisplayName(writerCell),
+        getNatepannPostValue(row)
+      ]);
+    },
+
+    getWriterCandidates(writerCell) {
+      const row = writerCell.closest(NATEPANN_POST_ROW_SELECTOR);
+
+      if (!row) {
+        return [];
+      }
+
+      const writerSearchValue = getNatepannWriterSearchValue(writerCell);
+      const writerDisplayName = getNatepannWriterDisplayName(writerCell);
+      const postValue = getNatepannPostValue(row);
+      const candidates = [];
+
+      if (writerSearchValue || writerDisplayName) {
+        candidates.push({
+          type: 'nick',
+          label: '닉네임(검색값)',
+          value: writerSearchValue || writerDisplayName
+        });
+      }
+
+      if (postValue) {
+        candidates.push({
+          type: 'unknown',
+          label: '글',
+          value: postValue
+        });
+      }
+
+      return candidates;
+    }
+  };
+
   function getSaraminUrlParamFromElement(element, paramName) {
     const href = element ? element.getAttribute('href') || '' : '';
 
@@ -1218,6 +1611,221 @@
       (row) => !rows.some((candidate) => candidate !== row && candidate.contains(row))
     );
   }
+
+  function getJobkoreaPathValueFromElement(element, pattern) {
+    const href = element ? element.getAttribute('href') || '' : '';
+
+    if (!href) {
+      return '';
+    }
+
+    try {
+      const match = new URL(href, window.location.href).pathname.match(pattern);
+
+      return match && match[1] ? match[1].trim() : '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function getJobkoreaDataInfoParts(row) {
+    return (row.getAttribute('data-info') || '')
+      .split('|')
+      .map((part) => part.trim());
+  }
+
+  function getJobkoreaTitleLink(row) {
+    return (
+      row.querySelector(JOBKOREA_TITLE_LINK_SELECTOR) ||
+      row.querySelector('a[href*="/Recruit/GI_Read/"]')
+    );
+  }
+
+  function getJobkoreaCompanyCell(row) {
+    return row.querySelector(JOBKOREA_COMPANY_CELL_SELECTOR);
+  }
+
+  function getJobkoreaCompanyLink(row) {
+    return row.querySelector(JOBKOREA_COMPANY_LINK_SELECTOR);
+  }
+
+  function getJobkoreaRecruitId(row) {
+    const rowGno = (row.getAttribute('data-gno') || '').trim();
+
+    if (rowGno) {
+      return rowGno;
+    }
+
+    return getJobkoreaPathValueFromElement(
+      getJobkoreaTitleLink(row),
+      /\/Recruit\/GI_Read\/([^/]+)/i
+    );
+  }
+
+  function getJobkoreaCompanyRawId(row) {
+    const linkCompanyId = getJobkoreaPathValueFromElement(
+      getJobkoreaCompanyLink(row),
+      /\/Recruit\/Co_Read\/C\/([^/]+)/i
+    );
+
+    if (linkCompanyId) {
+      return linkCompanyId;
+    }
+
+    const dataInfoParts = getJobkoreaDataInfoParts(row);
+    const dataInfoCompanyId = dataInfoParts.length >= 7 ? dataInfoParts[6] : '';
+
+    return dataInfoCompanyId || '';
+  }
+
+  function getJobkoreaCompanyId(row) {
+    const rawCompanyId = getJobkoreaCompanyRawId(row);
+
+    return rawCompanyId ? `${JOBKOREA_COMPANY_ID_PREFIX}${rawCompanyId}` : '';
+  }
+
+  function getJobkoreaRecruitValue(row) {
+    const recruitId = getJobkoreaRecruitId(row);
+
+    return recruitId ? `${JOBKOREA_RECRUIT_ID_PREFIX}${recruitId}` : '';
+  }
+
+  function getJobkoreaCompanyDisplayName(row) {
+    const companyCell = getJobkoreaCompanyCell(row);
+    const companyLink = getJobkoreaCompanyLink(row) || companyCell?.querySelector('a[href]');
+    const sourceElement = companyLink || companyCell;
+
+    if (!sourceElement) {
+      return '';
+    }
+
+    const clonedElement = sourceElement.cloneNode(true);
+
+    clonedElement
+      .querySelectorAll(`.${WRITER_ACTION_BUTTON_CLASS}`)
+      .forEach((element) => element.remove());
+
+    return (clonedElement.textContent || '').trim();
+  }
+
+  function getJobkoreaRowText(row, selectors) {
+    return getUniqueTrimmedValues(
+      selectors.map((selector) => row.querySelector(selector)?.textContent || '')
+    ).join(' ');
+  }
+
+  const jobkoreaAdapter = {
+    siteId: 'jobkorea',
+    displayName: '잡코리아',
+    postRowSelector: JOBKOREA_POST_ROW_SELECTOR,
+    writerCellSelector: JOBKOREA_COMPANY_CELL_SELECTOR,
+
+    matchesUrl(url) {
+      try {
+        const parsedUrl = new URL(url);
+
+        return (
+          parsedUrl.hostname === 'www.jobkorea.co.kr' &&
+          parsedUrl.pathname === '/recruit/joblist'
+        );
+      } catch (error) {
+        return false;
+      }
+    },
+
+    isSupportedPostRow(row) {
+      if (!row.matches(this.postRowSelector)) {
+        return false;
+      }
+
+      return Boolean(
+        getJobkoreaTitleLink(row) &&
+        getJobkoreaCompanyCell(row) &&
+        getJobkoreaRecruitId(row) &&
+        (getJobkoreaCompanyId(row) || getJobkoreaCompanyDisplayName(row))
+      );
+    },
+
+    getPostRows(root) {
+      return Array.from(root.querySelectorAll(this.postRowSelector)).filter((row) =>
+        this.isSupportedPostRow(row)
+      );
+    },
+
+    containsPostRows(node) {
+      if (!node || node.nodeType !== 1) {
+        return false;
+      }
+
+      if (node.matches(this.postRowSelector) && this.isSupportedPostRow(node)) {
+        return true;
+      }
+
+      return this.getPostRows(node).length > 0;
+    },
+
+    getTitleText(row) {
+      const titleLink = getJobkoreaTitleLink(row);
+      const titleText = titleLink ? titleLink.textContent : '';
+      const detailText = getJobkoreaRowText(row, [
+        '.tplTit .etc',
+        '.tplTit .dsc'
+      ]);
+
+      return getUniqueTrimmedValues([titleText, detailText]).join(' ');
+    },
+
+    getWriterCell(row) {
+      return getJobkoreaCompanyCell(row);
+    },
+
+    getWriterValues(row) {
+      return getUniqueTrimmedValues([
+        getJobkoreaCompanyId(row),
+        getJobkoreaCompanyDisplayName(row),
+        getJobkoreaRecruitValue(row)
+      ]);
+    },
+
+    getWriterCandidates(writerCell) {
+      const row = writerCell.closest(JOBKOREA_POST_ROW_SELECTOR);
+
+      if (!row) {
+        return [];
+      }
+
+      const companyId = getJobkoreaCompanyId(row);
+      const companyName = getJobkoreaCompanyDisplayName(row);
+      const recruitValue = getJobkoreaRecruitValue(row);
+      const candidates = [];
+
+      if (companyId) {
+        candidates.push({
+          type: 'uid',
+          label: '회사ID',
+          value: companyId
+        });
+      }
+
+      if (companyName) {
+        candidates.push({
+          type: 'nick',
+          label: '회사명',
+          value: companyName
+        });
+      }
+
+      if (recruitValue) {
+        candidates.push({
+          type: 'unknown',
+          label: '공고',
+          value: recruitValue
+        });
+      }
+
+      return candidates;
+    }
+  };
 
   const saraminAdapter = {
     siteId: 'saramin',
@@ -1349,6 +1957,9 @@
     todayhumorAdapter,
     quasarzoneAdapter,
     slrclubAdapter,
+    invenAdapter,
+    natepannAdapter,
+    jobkoreaAdapter,
     saraminAdapter
   ];
   const currentSiteAdapter = getCurrentSiteAdapter();
@@ -1375,7 +1986,7 @@
   }
 
   function getCurrentSiteCopy() {
-    if (getCurrentSiteId() === 'saramin') {
+    if (getCurrentSiteId() === 'saramin' || getCurrentSiteId() === 'jobkorea') {
       return {
         hiddenWriterLabel: '회사/공고',
         hiddenTitleLabel: '공고/조건',
