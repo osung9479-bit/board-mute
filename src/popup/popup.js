@@ -3,6 +3,7 @@
 
   const rulesStore = globalThis.BoardMuteRulesStore;
   const DEFAULT_SITE_ID = rulesStore ? rulesStore.DEFAULT_SITE_ID : 'dcinside';
+  const ACTIVE_TAB_SITE_CONTEXT_MESSAGE = 'BOARD_MUTE_GET_SITE_CONTEXT';
   const SITE_CONFIGS = {
     dcinside: {
       siteId: 'dcinside',
@@ -197,6 +198,13 @@
   const writerSearchInput = document.getElementById('writerSearchInput');
   const writerFilterTabs = document.querySelector('.writer-filter-tabs');
   const writerFilterButtons = Array.from(document.querySelectorAll('[data-writer-filter]'));
+  const ruleScopeButtons = Array.from(document.querySelectorAll('[data-rule-scope]'));
+  const ruleScopePanels = {
+    site: document.getElementById('siteRulesGroup'),
+    common: document.getElementById('commonRulesGroup')
+  };
+  const siteRuleScopeCount = document.getElementById('siteRuleScopeCount');
+  const commonRuleScopeCount = document.getElementById('commonRuleScopeCount');
   const WRITER_TYPE_LABELS = {
     uid: '아이디',
     ip: 'IP',
@@ -217,7 +225,110 @@
   let currentWriterFilter = 'all';
   let currentWriterSourceFilter = 'all';
   let currentWriterSearchQuery = '';
+  let currentRuleScope = 'site';
   let isSaving = false;
+
+  function isKnownSiteId(siteId) {
+    return Boolean(siteId && SITE_CONFIGS[siteId]);
+  }
+
+  function selectSite(siteId) {
+    currentSiteId = isKnownSiteId(siteId) ? siteId : DEFAULT_SITE_ID;
+    currentWriterFilter = 'all';
+    currentWriterSourceFilter = 'all';
+    currentWriterSearchQuery = '';
+    setRuleScope('site');
+    clearFormFeedback();
+  }
+
+  function getSiteIdFromUrl(url) {
+    if (rulesStore && rulesStore.getSiteIdFromUrl) {
+      return rulesStore.getSiteIdFromUrl(url);
+    }
+
+    return null;
+  }
+
+  function getLastRuntimeErrorMessage() {
+    return (
+      typeof chrome !== 'undefined' &&
+      chrome.runtime &&
+      chrome.runtime.lastError &&
+      chrome.runtime.lastError.message
+    ) || '';
+  }
+
+  function resolveActiveTabSiteId() {
+    if (
+      typeof chrome === 'undefined' ||
+      !chrome.tabs ||
+      typeof chrome.tabs.query !== 'function'
+    ) {
+      return Promise.resolve(null);
+    }
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const timeoutId = setTimeout(() => {
+        finish(null);
+      }, 350);
+
+      function finish(siteId) {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        clearTimeout(timeoutId);
+        resolve(isKnownSiteId(siteId) ? siteId : null);
+      }
+
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (getLastRuntimeErrorMessage()) {
+          finish(null);
+          return;
+        }
+
+        const activeTab = Array.isArray(tabs) ? tabs[0] : null;
+        const urlSiteId = activeTab ? getSiteIdFromUrl(activeTab.url) : null;
+
+        if (urlSiteId) {
+          finish(urlSiteId);
+          return;
+        }
+
+        if (
+          !activeTab ||
+          typeof activeTab.id === 'undefined' ||
+          typeof chrome.tabs.sendMessage !== 'function'
+        ) {
+          finish(null);
+          return;
+        }
+
+        chrome.tabs.sendMessage(
+          activeTab.id,
+          { type: ACTIVE_TAB_SITE_CONTEXT_MESSAGE },
+          (response) => {
+            if (getLastRuntimeErrorMessage()) {
+              finish(null);
+              return;
+            }
+
+            finish(response && response.siteId);
+          }
+        );
+      });
+    });
+  }
+
+  function selectActiveTabSite() {
+    return resolveActiveTabSiteId().then((siteId) => {
+      if (siteId && siteId !== currentSiteId) {
+        selectSite(siteId);
+      }
+    });
+  }
 
   function createFallbackWriterEntries(writerValues, source = 'unknown') {
     return writerValues.map((writerValue) => ({
@@ -568,6 +679,68 @@
     });
   }
 
+  function setRuleScope(nextRuleScope) {
+    currentRuleScope = nextRuleScope === 'common' ? 'common' : 'site';
+
+    ruleScopeButtons.forEach((button) => {
+      const isActive = button.dataset.ruleScope === currentRuleScope;
+
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-selected', String(isActive));
+      button.tabIndex = isActive ? 0 : -1;
+    });
+
+    Object.entries(ruleScopePanels).forEach(([ruleScope, panel]) => {
+      if (panel) {
+        panel.hidden = ruleScope !== currentRuleScope;
+      }
+    });
+  }
+
+  function focusRuleScopeButton(nextIndex) {
+    if (ruleScopeButtons.length === 0) {
+      return;
+    }
+
+    const normalizedIndex =
+      (nextIndex + ruleScopeButtons.length) % ruleScopeButtons.length;
+    const button = ruleScopeButtons[normalizedIndex];
+
+    setRuleScope(button.dataset.ruleScope);
+    button.focus();
+  }
+
+  function handleRuleScopeKeydown(event) {
+    const currentIndex = ruleScopeButtons.indexOf(event.currentTarget);
+
+    if (currentIndex === -1) {
+      return;
+    }
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusRuleScopeButton(currentIndex + 1);
+      return;
+    }
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      focusRuleScopeButton(currentIndex - 1);
+      return;
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      focusRuleScopeButton(0);
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      focusRuleScopeButton(ruleScopeButtons.length - 1);
+    }
+  }
+
   function renderWriterEntryList(entries) {
     writerValueList.replaceChildren();
     renderWriterFilterButtons();
@@ -687,6 +860,8 @@
     titleKeywordCount.textContent = String(titleKeywords.length);
     globalTitleKeywordCount.textContent = String(currentGlobalRules.titleKeywords.length);
     writerValueCount.textContent = String(writerValues.length);
+    siteRuleScopeCount.textContent = String(titleKeywords.length + writerValues.length);
+    commonRuleScopeCount.textContent = String(currentGlobalRules.titleKeywords.length);
     titleKeywordSectionCount.textContent = `${titleKeywords.length}개`;
     globalTitleKeywordSectionCount.textContent = `${currentGlobalRules.titleKeywords.length}개`;
     writerValueSectionCount.textContent = `${writerValues.length}개`;
@@ -1092,6 +1267,13 @@
     });
   });
 
+  ruleScopeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      setRuleScope(button.dataset.ruleScope);
+    });
+    button.addEventListener('keydown', handleRuleScopeKeydown);
+  });
+
   writerSourceFilterSelect.addEventListener('change', () => {
     currentWriterSourceFilter = writerSourceFilterSelect.value || 'all';
     renderWriterEntryList(currentRules.writerEntries);
@@ -1112,13 +1294,14 @@
       return;
     }
 
-    currentSiteId = SITE_CONFIGS[siteSelect.value] ? siteSelect.value : DEFAULT_SITE_ID;
-    currentWriterFilter = 'all';
-    currentWriterSourceFilter = 'all';
-    currentWriterSearchQuery = '';
-    clearFormFeedback();
+    selectSite(siteSelect.value);
     loadCurrentSiteRules();
   });
 
-  loadCurrentSiteRules();
+  setRuleScope(currentRuleScope);
+  selectActiveTabSite()
+    .catch(() => {})
+    .finally(() => {
+      loadCurrentSiteRules();
+    });
 })();

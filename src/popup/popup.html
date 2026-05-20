@@ -19,7 +19,10 @@
       <section class="site-picker-panel" aria-label="선택 사이트 관리">
         <div class="site-dashboard-top">
           <label class="site-picker">
-            <span>선택 사이트</span>
+            <span class="site-picker-label-row">
+              <span>선택 사이트</span>
+              <span class="site-count-badge">12개 지원</span>
+            </span>
             <select id="siteSelect" aria-label="관리할 사이트 선택">
               <option value="dcinside">디시인사이드</option>
               <option value="fmkorea">에펨코리아</option>
@@ -67,7 +70,41 @@
         </section>
       </section>
 
-      <section class="rule-group" aria-labelledby="siteRulesHeading">
+      <nav class="rule-scope-tabs" role="tablist" aria-label="규칙 범위">
+        <button
+          id="siteRuleScopeButton"
+          class="rule-scope-button is-active"
+          type="button"
+          role="tab"
+          data-rule-scope="site"
+          aria-controls="siteRulesGroup"
+          aria-selected="true"
+          tabindex="0"
+        >
+          <span>선택 사이트</span>
+          <strong id="siteRuleScopeCount">0</strong>
+        </button>
+        <button
+          id="commonRuleScopeButton"
+          class="rule-scope-button"
+          type="button"
+          role="tab"
+          data-rule-scope="common"
+          aria-controls="commonRulesGroup"
+          aria-selected="false"
+          tabindex="-1"
+        >
+          <span>공통</span>
+          <strong id="commonRuleScopeCount">0</strong>
+        </button>
+      </nav>
+
+      <section
+        id="siteRulesGroup"
+        class="rule-group rule-scope-panel"
+        role="tabpanel"
+        aria-labelledby="siteRuleScopeButton"
+      >
         <div class="rule-group-heading">
           <h2 id="siteRulesHeading">디시 규칙</h2>
           <span id="siteRulesHost">gall.dcinside.com</span>
@@ -156,7 +193,13 @@
         </details>
       </section>
 
-      <section class="rule-group common-rule-group" aria-labelledby="commonRulesHeading">
+      <section
+        id="commonRulesGroup"
+        class="rule-group common-rule-group rule-scope-panel"
+        role="tabpanel"
+        aria-labelledby="commonRuleScopeButton"
+        hidden
+      >
         <div class="rule-group-heading">
           <h2 id="commonRulesHeading">공통 규칙</h2>
           <span>지원 사이트 전체</span>

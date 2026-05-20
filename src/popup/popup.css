@@ -104,6 +104,30 @@ body {
   white-space: nowrap;
 }
 
+.site-picker-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.site-picker-label-row span {
+  min-width: 0;
+}
+
+.site-count-badge {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid #d3e0ec;
+  border-radius: 999px;
+  background: #f7fbff;
+  color: var(--info);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .site-picker select {
   width: 100%;
   min-width: 0;
@@ -282,6 +306,80 @@ body {
 
 .site-toggle input:disabled + span {
   opacity: 0.62;
+}
+
+.rule-scope-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #eef2f6;
+}
+
+.rule-scope-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  text-align: left;
+}
+
+.rule-scope-button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rule-scope-button strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #dce5ee;
+  color: #415165;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.rule-scope-button:hover,
+.rule-scope-button:focus {
+  border-color: #b8d8ce;
+  color: var(--accent);
+  outline: none;
+}
+
+.rule-scope-button.is-active {
+  border-color: #b8d8ce;
+  background: #ffffff;
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(24, 32, 42, 0.08);
+}
+
+.rule-scope-button.is-active strong {
+  background: var(--accent-soft);
+  color: #125745;
+}
+
+.rule-scope-panel[hidden] {
+  display: none;
 }
 
 .rule-group {

@@ -2457,6 +2457,14 @@
     return parts.length > 0 ? parts.join(' / ') : '숨긴 항목 없음';
   }
 
+  function formatRevealControlAriaLabel(statusText, primaryText, detailText) {
+    const parts = [statusText, primaryText, detailText]
+      .map((part) => (part || '').trim())
+      .filter(Boolean);
+
+    return `Board Mute 상태: ${parts.join(', ')}`;
+  }
+
   function getConnectedTemporaryHiddenEntries() {
     temporaryHideState.hiddenEntries = temporaryHideState.hiddenEntries.filter(
       (entry) =>
@@ -2685,7 +2693,7 @@
     updateRevealControl();
     showToast('임시 숨김됨', {
       label: '되돌리기',
-      onAction: () => {
+      onClick: () => {
         restoreLastTemporaryHiddenElement(entry);
       }
     });
@@ -3078,6 +3086,8 @@
       control = document.createElement('div');
       control.className = REVEAL_CONTROL_CLASS;
       control.setAttribute('role', 'status');
+      control.setAttribute('aria-live', 'polite');
+      control.setAttribute('aria-atomic', 'true');
 
       const status = document.createElement('span');
       status.className = REVEAL_CONTROL_STATUS_CLASS;
@@ -3181,10 +3191,25 @@
       detail.textContent = '이번 페이지에서만 숨김';
     }
 
+    control.setAttribute(
+      'aria-label',
+      formatRevealControlAriaLabel(
+        status ? status.textContent : '',
+        text ? text.textContent : '',
+        detail ? detail.textContent : ''
+      )
+    );
+
     if (button) {
       button.hidden = hiddenRows.length === 0;
       button.textContent = isRevealed ? '다시 숨김' : '잠시 보기';
       button.onclick = isRevealed ? hideTemporarilyShownRows : revealTemporarilyHiddenRows;
+      button.setAttribute(
+        'aria-label',
+        isRevealed
+          ? `${temporarilyShownRows.length}개 임시 표시한 숨김 다시 숨김`
+          : `숨김 ${hiddenRows.length}개 잠시 보기`
+      );
     }
 
     if (recentButton) {
@@ -4128,6 +4153,31 @@
     storageChangeListenerAttached = true;
   }
 
+  function startRuntimeMessageListener() {
+    if (
+      typeof chrome === 'undefined' ||
+      !chrome.runtime ||
+      !chrome.runtime.onMessage ||
+      typeof chrome.runtime.onMessage.addListener !== 'function'
+    ) {
+      return;
+    }
+
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (!message || message.type !== 'BOARD_MUTE_GET_SITE_CONTEXT') {
+        return false;
+      }
+
+      sendResponse({
+        siteId: getCurrentSiteId(),
+        displayName: getCurrentSiteDisplayName(),
+        supported: true
+      });
+
+      return false;
+    });
+  }
+
   function loadAndApplyRules(reason) {
     return loadRulesForCurrentSite()
       .then((rulesResult) => {
@@ -4150,6 +4200,8 @@
   }
 
   console.info('Board Mute: content script loaded');
+
+  startRuntimeMessageListener();
 
   loadAndApplyRules('initial')
     .catch((error) => {
